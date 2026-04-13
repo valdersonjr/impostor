@@ -24,10 +24,56 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 /* ── Types ───────────────────────────────────────────────────── */
-type Phase = 'loading' | 'lobby' | 'role' | 'voting' | 'results' | 'reveal';
+type Phase = 'naming' | 'loading' | 'lobby' | 'role' | 'voting' | 'results' | 'reveal';
 
-interface ConnectedPlayer { peerId: string; num: number; conn: any; }
-interface TallyEntry { num: number; count: number; isImpostor: boolean; }
+interface ConnectedPlayer { peerId: string; num: number; conn: any; name: string; }
+interface TallyEntry { num: number; count: number; isImpostor: boolean; name: string; }
+
+/* ── Naming screen ───────────────────────────────────────────── */
+function NamingScreen({ onConfirm }: { onConfirm: (name: string) => void }) {
+  const [value, setValue] = useState('');
+  const submit = () => { const n = value.trim(); if (n) onConfirm(n); };
+  return (
+    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-10">
+      <div className="flex flex-col items-center gap-2">
+        <h2 className="font-cinzel font-bold tracking-[0.3em] text-xl" style={{ color: '#b8860b' }}>
+          SEU NOME
+        </h2>
+        <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          Como você quer ser chamado?
+        </p>
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && submit()}
+        maxLength={20}
+        autoFocus
+        placeholder="Digite seu nome"
+        className="w-full max-w-xs text-center text-xl bg-transparent outline-none pb-2"
+        style={{
+          borderBottom: '1px solid #2a2a2a',
+          color: '#f0ede6',
+          fontFamily: 'var(--font-inter)',
+          caretColor: '#c41e1e',
+        }}
+      />
+      <button
+        onClick={submit}
+        disabled={!value.trim()}
+        className="w-full max-w-xs py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all active:scale-95"
+        style={{
+          background: value.trim() ? 'linear-gradient(135deg, #8b0000, #c41e1e)' : '#111111',
+          color: value.trim() ? '#f0ede6' : '#2a2a2a',
+          border: `1px solid ${value.trim() ? '#c41e1e40' : '#1a1a1a'}`,
+        }}
+      >
+        CRIAR SALA
+      </button>
+    </div>
+  );
+}
 
 /* ── Sub-components ──────────────────────────────────────────── */
 function Stepper({ label, value, min, max, onChange }: {
@@ -81,7 +127,7 @@ function VoteRequestBanner({ requested, count, total, onRequest }: {
 }
 
 function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, total, onSelect, onConfirm }: {
-  players: { num: number }[];
+  players: { num: number; name: string }[];
   myNum: number;
   selectedVote: number | null;
   confirmedVote: number | null;
@@ -116,7 +162,7 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
                 background: isSelected ? '#1a0000' : 'transparent',
               }}>
               <span className="text-sm" style={{ color: isSelected ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
-                Jogador {p.num}
+                {p.name}
               </span>
               <div className="flex items-center gap-3">
                 {isMe && (
@@ -167,6 +213,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
   onReveal?: () => void;
 }) {
   const maxCount = Math.max(...tally.map(t => t.count), 1);
+  const eliminatedName = tally.find(t => t.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`;
   return (
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
@@ -181,8 +228,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
             <div className="flex items-center justify-between">
               <span className="text-xs tracking-[0.2em] uppercase"
                 style={{ color: entry.num === eliminatedNum ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
-                Jogador {entry.num}
-                {entry.num === eliminatedNum && ' ←'}
+                {entry.name}{entry.num === eliminatedNum && ' ←'}
               </span>
               <span className="text-xs font-cinzel" style={{ color: entry.num === eliminatedNum ? '#c41e1e' : '#333333' }}>
                 {entry.count} {entry.count === 1 ? 'voto' : 'votos'}
@@ -201,7 +247,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
 
       <div className="flex flex-col items-center gap-3 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
         <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-          Jogador {eliminatedNum} foi eliminado
+          {eliminatedName} foi eliminado
         </p>
         {isHost && onReveal && (
           <button onClick={onReveal}
@@ -220,15 +266,15 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
   );
 }
 
-function RevealScreen({ eliminatedNum, wasImpostor, onNewGame }: {
-  eliminatedNum: number; wasImpostor: boolean; onNewGame: () => void;
+function RevealScreen({ eliminatedName, wasImpostor, onNewGame }: {
+  eliminatedName: string; wasImpostor: boolean; onNewGame: () => void;
 }) {
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 relative animate-scale-in">
       {wasImpostor ? (
         <>
           <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>
-            Jogador {eliminatedNum}
+            {eliminatedName}
           </p>
           <h2 className="font-cinzel font-black text-center animate-blood-pulse"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
@@ -241,7 +287,7 @@ function RevealScreen({ eliminatedNum, wasImpostor, onNewGame }: {
       ) : (
         <>
           <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#444444' }}>
-            Jogador {eliminatedNum}
+            {eliminatedName}
           </p>
           <h2 className="font-cinzel font-bold text-center"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#888888', letterSpacing: '0.05em', lineHeight: 1.1 }}>
@@ -266,37 +312,41 @@ export default function HostRoom() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [phase, setPhase] = useState<Phase>('loading');
+  const [phase, setPhase] = useState<Phase>('naming');
+  const [hostName, setHostName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomUrl, setRoomUrl] = useState('');
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [impostors, setImpostors] = useState(parseInt(searchParams.get('impostors') ?? '1'));
   const [myRole, setMyRole] = useState<{ role: 'innocent' | 'impostor'; word: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [peerInit, setPeerInit] = useState(false);
 
   // Voting state
   const [hasRequestedVote, setHasRequestedVote] = useState(false);
   const [voteRequestCount, setVoteRequestCount] = useState(0);
   const [totalPlayers, setTotalPlayers] = useState(0);
-  const [allPlayerNums, setAllPlayerNums] = useState<number[]>([]);
+  const [allPlayers, setAllPlayers] = useState<{ num: number; name: string }[]>([]);
   const [selectedVote, setSelectedVote] = useState<number | null>(null);
   const [confirmedVote, setConfirmedVote] = useState<number | null>(null);
   const [voteCount, setVoteCount] = useState(0);
   const [tally, setTally] = useState<TallyEntry[]>([]);
   const [eliminatedNum, setEliminatedNum] = useState<number | null>(null);
+  const [eliminatedName, setEliminatedName] = useState<string | null>(null);
 
   // Refs (safe to read inside PeerJS callbacks)
   const peerRef = useRef<any>(null);
   const playersRef = useRef<ConnectedPlayer[]>([]);
   const counterRef = useRef(2);
   const wordRef = useRef('');
+  const hostNameRef = useRef('');
   const impostorNumsRef = useRef<Set<number>>(new Set());
   const hasRequestedVoteRef = useRef(false);
   const voteRequestsRef = useRef<Set<string>>(new Set());
   const votesRef = useRef<Map<string, number>>(new Map());
   const confirmedVoteRef = useRef<number | null>(null);
   const totalPlayersRef = useRef(0);
-  const allPlayerNumsRef = useRef<number[]>([]);
+  const allPlayersRef = useRef<{ num: number; name: string }[]>([]);
 
   /* ── Stable helpers (only use refs internally) ─────────────── */
   const broadcastAll = useCallback((msg: any) => {
@@ -304,13 +354,16 @@ export default function HostRoom() {
   }, []);
 
   const broadcastLobby = useCallback((current: ConnectedPlayer[]) => {
-    const list = [{ num: 1 }, ...current.map(p => ({ num: p.num }))];
+    const list = [
+      { num: 1, name: hostNameRef.current },
+      ...current.map(p => ({ num: p.num, name: p.name })),
+    ];
     current.forEach(p => { try { p.conn.send({ type: 'lobby', players: list }); } catch {} });
   }, []);
 
   const finalizeVotes = useCallback(() => {
-    const nums = allPlayerNumsRef.current;
-    const tallyMap = new Map<number, number>(nums.map(n => [n, 0]));
+    const players = allPlayersRef.current;
+    const tallyMap = new Map<number, number>(players.map(p => [p.num, 0]));
 
     votesRef.current.forEach(targetNum => {
       tallyMap.set(targetNum, (tallyMap.get(targetNum) ?? 0) + 1);
@@ -321,24 +374,33 @@ export default function HostRoom() {
     }
 
     const sorted: TallyEntry[] = Array.from(tallyMap.entries())
-      .map(([num, count]) => ({ num, count, isImpostor: impostorNumsRef.current.has(num) }))
+      .map(([num, count]) => {
+        const player = players.find(p => p.num === num);
+        return { num, count, isImpostor: impostorNumsRef.current.has(num), name: player?.name ?? `Jogador ${num}` };
+      })
       .sort((a, b) => b.count - a.count || a.num - b.num);
 
     const eliminated = sorted[0].num;
+    const elName = sorted[0].name;
     setTally(sorted);
     setEliminatedNum(eliminated);
+    setEliminatedName(elName);
     setPhase('results');
-    broadcastAll({ type: 'vote_results', tally: sorted.map(({ num, count }) => ({ num, count })), eliminatedNum: eliminated });
+    broadcastAll({
+      type: 'vote_results',
+      tally: sorted.map(({ num, count, name }) => ({ num, count, name })),
+      eliminatedNum: eliminated,
+    });
   }, [broadcastAll]);
 
   const triggerVoting = useCallback(() => {
-    const playerList = [{ num: 1 }, ...playersRef.current.map(p => ({ num: p.num }))];
     setPhase('voting');
-    broadcastAll({ type: 'voting_open', players: playerList });
+    broadcastAll({ type: 'voting_open', players: allPlayersRef.current });
   }, [broadcastAll]);
 
   /* ── PeerJS init ─────────────────────────────────────────────── */
   useEffect(() => {
+    if (!peerInit) return;
     let mounted = true;
 
     const init = async (retryCode?: string) => {
@@ -361,13 +423,22 @@ export default function HostRoom() {
         conn.on('open', () => {
           if (!mounted) return;
           const num = counterRef.current++;
-          const player: ConnectedPlayer = { peerId: conn.peer, num, conn };
+          const player: ConnectedPlayer = { peerId: conn.peer, num, conn, name: '' };
           playersRef.current = [...playersRef.current, player];
           setPlayers([...playersRef.current]);
           broadcastLobby(playersRef.current);
         });
 
         conn.on('data', (msg: any) => {
+          if (msg.type === 'join') {
+            const updated = playersRef.current.map(p =>
+              p.peerId === conn.peer ? { ...p, name: msg.name } : p
+            );
+            playersRef.current = updated;
+            setPlayers([...updated]);
+            broadcastLobby(updated);
+          }
+
           if (msg.type === 'request_vote') {
             voteRequestsRef.current.add(conn.peer);
             const hostVal = hasRequestedVoteRef.current ? 1 : 0;
@@ -407,12 +478,10 @@ export default function HostRoom() {
         wordRef.current = words[Math.floor(Math.random() * words.length)];
       });
 
-    // Mantém a tela do host acesa enquanto a sala está ativa
     let wakeLock: WakeLockSentinel | null = null;
     if ('wakeLock' in navigator) {
       navigator.wakeLock.request('screen').then(l => { wakeLock = l; }).catch(() => {});
     }
-    // Reacquire WakeLock se o usuário voltar para a aba
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible' && 'wakeLock' in navigator) {
         navigator.wakeLock.request('screen').then(l => { wakeLock = l; }).catch(() => {});
@@ -427,20 +496,23 @@ export default function HostRoom() {
       wakeLock?.release();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [broadcastAll, broadcastLobby, triggerVoting, finalizeVotes]);
+  }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes]);
 
   /* ── Game actions ────────────────────────────────────────────── */
   const startGame = useCallback(() => {
-    const allSlots = [{ id: 'host', num: 1 }, ...playersRef.current.map(p => ({ id: p.peerId, num: p.num }))];
+    const allSlots = [
+      { id: 'host', num: 1, name: hostNameRef.current },
+      ...playersRef.current.map(p => ({ id: p.peerId, num: p.num, name: p.name })),
+    ];
     const shuffled = shuffle(allSlots);
     const cap = Math.min(impostors, allSlots.length - 1);
     const roleMap = new Map(shuffled.map((s, i) => [s.id, i < cap ? 'impostor' : 'innocent']));
 
-    const nums = allSlots.map(s => s.num);
-    allPlayerNumsRef.current = nums;
-    totalPlayersRef.current = nums.length;
-    setAllPlayerNums(nums);
-    setTotalPlayers(nums.length);
+    const playersList = allSlots.map(({ num, name }) => ({ num, name }));
+    allPlayersRef.current = playersList;
+    totalPlayersRef.current = playersList.length;
+    setAllPlayers(playersList);
+    setTotalPlayers(playersList.length);
 
     const impostorNums = new Set<number>();
     shuffled.slice(0, cap).forEach(s => impostorNums.add(s.num));
@@ -480,7 +552,10 @@ export default function HostRoom() {
   const revealImpostor = useCallback(() => {
     if (eliminatedNum === null) return;
     const wasImpostor = impostorNumsRef.current.has(eliminatedNum);
-    broadcastAll({ type: 'impostor_reveal', eliminatedNum, wasImpostor });
+    const player = allPlayersRef.current.find(p => p.num === eliminatedNum);
+    const elName = player?.name ?? `Jogador ${eliminatedNum}`;
+    setEliminatedName(elName);
+    broadcastAll({ type: 'impostor_reveal', eliminatedName: elName, wasImpostor });
     setPhase('reveal');
   }, [eliminatedNum, broadcastAll]);
 
@@ -492,6 +567,18 @@ export default function HostRoom() {
   }, [roomUrl]);
 
   const totalInLobby = 1 + players.length;
+
+  /* ── Render: Naming ── */
+  if (phase === 'naming') {
+    return (
+      <NamingScreen onConfirm={(name) => {
+        setHostName(name);
+        hostNameRef.current = name;
+        setPeerInit(true);
+        setPhase('loading');
+      }} />
+    );
+  }
 
   /* ── Render: Loading ── */
   if (phase === 'loading') {
@@ -506,7 +593,7 @@ export default function HostRoom() {
   if (phase === 'voting') {
     return (
       <VotingScreen
-        players={allPlayerNums.map(n => ({ num: n }))}
+        players={allPlayers}
         myNum={1}
         selectedVote={selectedVote}
         confirmedVote={confirmedVote}
@@ -531,11 +618,11 @@ export default function HostRoom() {
   }
 
   /* ── Render: Reveal ── */
-  if (phase === 'reveal' && eliminatedNum !== null) {
-    const wasImpostor = impostorNumsRef.current.has(eliminatedNum);
+  if (phase === 'reveal' && eliminatedName !== null) {
+    const wasImpostor = eliminatedNum !== null && impostorNumsRef.current.has(eliminatedNum);
     return (
       <RevealScreen
-        eliminatedNum={eliminatedNum}
+        eliminatedName={eliminatedName}
         wasImpostor={wasImpostor}
         onNewGame={() => router.push('/')}
       />
@@ -559,7 +646,7 @@ export default function HostRoom() {
           </div>
         ) : (
           <>
-              <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
+            <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
               <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
                 Você é o
               </p>
@@ -613,12 +700,17 @@ export default function HostRoom() {
           Jogadores ({totalInLobby})
         </p>
         <div className="flex items-center justify-between py-3 px-4" style={{ borderBottom: '1px solid #1a1a1a' }}>
-          <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>Jogador 1</span>
-          <span className="text-xs tracking-widest uppercase" style={{ color: '#b8860b', fontFamily: 'var(--font-inter)' }}>você</span>
+          <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>{hostName}</span>
+          <div className="flex gap-2">
+            <span className="text-xs tracking-widest uppercase" style={{ color: '#b8860b', fontFamily: 'var(--font-inter)' }}>você</span>
+            <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>host</span>
+          </div>
         </div>
         {players.map(p => (
-          <div key={p.peerId} className="flex items-center py-3 px-4 animate-fade-in" style={{ borderBottom: '1px solid #1a1a1a' }}>
-            <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>Jogador {p.num}</span>
+          <div key={p.peerId} className="flex items-center justify-between py-3 px-4 animate-fade-in" style={{ borderBottom: '1px solid #1a1a1a' }}>
+            <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
+              {p.name || '...'}
+            </span>
           </div>
         ))}
         {totalInLobby < 2 && (

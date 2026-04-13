@@ -5,14 +5,60 @@ import { useParams, useRouter } from 'next/navigation';
 
 const PEER_PREFIX = 'impostor-';
 
-type Phase = 'connecting' | 'waiting' | 'role' | 'voting' | 'results' | 'reveal' | 'error';
+type Phase = 'naming' | 'connecting' | 'waiting' | 'role' | 'voting' | 'results' | 'reveal' | 'error';
 
-interface LobbyPlayer { num: number; }
-interface TallyEntry { num: number; count: number; }
+interface LobbyPlayer { num: number; name: string; }
+interface TallyEntry { num: number; count: number; name: string; }
+
+/* ── Naming screen ───────────────────────────────────────────── */
+function NamingScreen({ onConfirm }: { onConfirm: (name: string) => void }) {
+  const [value, setValue] = useState('');
+  const submit = () => { const n = value.trim(); if (n) onConfirm(n); };
+  return (
+    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-10">
+      <div className="flex flex-col items-center gap-2">
+        <h2 className="font-cinzel font-bold tracking-[0.3em] text-xl" style={{ color: '#b8860b' }}>
+          SEU NOME
+        </h2>
+        <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          Como você quer ser chamado?
+        </p>
+      </div>
+      <input
+        type="text"
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && submit()}
+        maxLength={20}
+        autoFocus
+        placeholder="Digite seu nome"
+        className="w-full max-w-xs text-center text-xl bg-transparent outline-none pb-2"
+        style={{
+          borderBottom: '1px solid #2a2a2a',
+          color: '#f0ede6',
+          fontFamily: 'var(--font-inter)',
+          caretColor: '#c41e1e',
+        }}
+      />
+      <button
+        onClick={submit}
+        disabled={!value.trim()}
+        className="w-full max-w-xs py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all active:scale-95"
+        style={{
+          background: value.trim() ? 'linear-gradient(135deg, #8b0000, #c41e1e)' : '#111111',
+          color: value.trim() ? '#f0ede6' : '#2a2a2a',
+          border: `1px solid ${value.trim() ? '#c41e1e40' : '#1a1a1a'}`,
+        }}
+      >
+        ENTRAR
+      </button>
+    </div>
+  );
+}
 
 /* ── Voting screen ───────────────────────────────────────────── */
 function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, total, onSelect, onConfirm }: {
-  players: { num: number }[];
+  players: { num: number; name: string }[];
   myNum: number | null;
   selectedVote: number | null;
   confirmedVote: number | null;
@@ -41,7 +87,7 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
               className="flex items-center justify-between py-4 px-4 transition-all active:scale-[0.98]"
               style={{ borderBottom: '1px solid #1a1a1a', background: isSelected ? '#1a0000' : 'transparent' }}>
               <span className="text-sm" style={{ color: isSelected ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
-                Jogador {p.num}
+                {p.name}
               </span>
               <div className="flex items-center gap-3">
                 {isMe && <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>você</span>}
@@ -93,7 +139,7 @@ function ResultsScreen({ tally, eliminatedNum }: { tally: TallyEntry[]; eliminat
             <div className="flex items-center justify-between">
               <span className="text-xs tracking-[0.2em] uppercase"
                 style={{ color: entry.num === eliminatedNum ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
-                Jogador {entry.num}{entry.num === eliminatedNum && ' ←'}
+                {entry.name}{entry.num === eliminatedNum && ' ←'}
               </span>
               <span className="text-xs font-cinzel" style={{ color: entry.num === eliminatedNum ? '#c41e1e' : '#333333' }}>
                 {entry.count} {entry.count === 1 ? 'voto' : 'votos'}
@@ -108,7 +154,7 @@ function ResultsScreen({ tally, eliminatedNum }: { tally: TallyEntry[]; eliminat
       </div>
       <div className="flex flex-col items-center gap-2 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
         <p className="text-xs" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-          Jogador {eliminatedNum} foi eliminado
+          {tally.find(t => t.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`} foi eliminado
         </p>
         <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
           Aguardando o host revelar...
@@ -119,12 +165,12 @@ function ResultsScreen({ tally, eliminatedNum }: { tally: TallyEntry[]; eliminat
 }
 
 /* ── Reveal screen ───────────────────────────────────────────── */
-function RevealScreen({ eliminatedNum, wasImpostor }: { eliminatedNum: number; wasImpostor: boolean; }) {
+function RevealScreen({ eliminatedName, wasImpostor }: { eliminatedName: string; wasImpostor: boolean; }) {
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 animate-scale-in relative">
       {wasImpostor ? (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>Jogador {eliminatedNum}</p>
+          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>{eliminatedName}</p>
           <h2 className="font-cinzel font-black text-center animate-blood-pulse"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
             ERA O IMPOSTOR
@@ -135,7 +181,7 @@ function RevealScreen({ eliminatedNum, wasImpostor }: { eliminatedNum: number; w
         </>
       ) : (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#444444' }}>Jogador {eliminatedNum}</p>
+          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#444444' }}>{eliminatedName}</p>
           <h2 className="font-cinzel font-bold text-center"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#888888', letterSpacing: '0.05em', lineHeight: 1.1 }}>
             ERA INOCENTE
@@ -154,7 +200,8 @@ export default function PlayerRoom() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
 
-  const [phase, setPhase] = useState<Phase>('connecting');
+  const [phase, setPhase] = useState<Phase>('naming');
+  const [name, setName] = useState('');
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [myRole, setMyRole] = useState<{ role: 'innocent' | 'impostor'; word: string } | null>(null);
   const [myNum, setMyNum] = useState<number | null>(null);
@@ -165,20 +212,22 @@ export default function PlayerRoom() {
   const [hasRequestedVote, setHasRequestedVote] = useState(false);
   const [voteRequestCount, setVoteRequestCount] = useState(0);
   const [voteTotal, setVoteTotal] = useState(0);
-  const [votingPlayers, setVotingPlayers] = useState<{ num: number }[]>([]);
+  const [votingPlayers, setVotingPlayers] = useState<{ num: number; name: string }[]>([]);
   const [selectedVote, setSelectedVote] = useState<number | null>(null);
   const [confirmedVote, setConfirmedVote] = useState<number | null>(null);
   const [voteCount, setVoteCount] = useState(0);
   const [tally, setTally] = useState<TallyEntry[]>([]);
   const [eliminatedNum, setEliminatedNum] = useState<number | null>(null);
-  const [revealData, setRevealData] = useState<{ eliminatedNum: number; wasImpostor: boolean } | null>(null);
+  const [revealData, setRevealData] = useState<{ eliminatedName: string; wasImpostor: boolean } | null>(null);
 
   const peerRef = useRef<any>(null);
   const connRef = useRef<any>(null);
   const myNumRef = useRef<number | null>(null);
   const myNumSetRef = useRef(false);
+  const nameRef = useRef('');
 
   useEffect(() => {
+    if (phase !== 'connecting') return;
     let mounted = true;
 
     const init = async () => {
@@ -196,7 +245,12 @@ export default function PlayerRoom() {
           if (mounted) { setErrorMsg('Sala não encontrada ou host desconectou.'); setPhase('error'); }
         }, 8000);
 
-        conn.on('open', () => { if (mounted) { clearTimeout(timeout); setPhase('waiting'); } });
+        conn.on('open', () => {
+          if (!mounted) return;
+          clearTimeout(timeout);
+          try { conn.send({ type: 'join', name: nameRef.current }); } catch {}
+          setPhase('waiting');
+        });
 
         conn.on('data', (msg: any) => {
           if (!mounted) return;
@@ -238,7 +292,7 @@ export default function PlayerRoom() {
           }
 
           if (msg.type === 'impostor_reveal') {
-            setRevealData({ eliminatedNum: msg.eliminatedNum, wasImpostor: msg.wasImpostor });
+            setRevealData({ eliminatedName: msg.eliminatedName, wasImpostor: msg.wasImpostor });
             setPhase('reveal');
           }
         });
@@ -276,6 +330,17 @@ export default function PlayerRoom() {
     setConfirmedVote(selectedVote);
     try { connRef.current.send({ type: 'vote', targetNum: selectedVote }); } catch {}
   };
+
+  /* ── Naming ── */
+  if (phase === 'naming') {
+    return (
+      <NamingScreen onConfirm={(n) => {
+        setName(n);
+        nameRef.current = n;
+        setPhase('connecting');
+      }} />
+    );
+  }
 
   /* ── Connecting ── */
   if (phase === 'connecting') {
@@ -327,7 +392,7 @@ export default function PlayerRoom() {
 
   /* ── Reveal ── */
   if (phase === 'reveal' && revealData) {
-    return <RevealScreen eliminatedNum={revealData.eliminatedNum} wasImpostor={revealData.wasImpostor} />;
+    return <RevealScreen eliminatedName={revealData.eliminatedName} wasImpostor={revealData.wasImpostor} />;
   }
 
   /* ── Role ── */
@@ -417,7 +482,7 @@ export default function PlayerRoom() {
           <div key={p.num} className="flex items-center justify-between py-3 px-4"
             style={{ borderBottom: '1px solid #1a1a1a' }}>
             <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-              Jogador {p.num}
+              {p.name}
             </span>
             <div className="flex gap-2">
               {p.num === myNum && myNumSet && (
