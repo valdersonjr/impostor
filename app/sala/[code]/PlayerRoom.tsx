@@ -298,7 +298,7 @@ export default function PlayerRoom() {
         });
 
         conn.on('close', () => {
-          if (mounted && phase !== 'role' && phase !== 'voting' && phase !== 'results' && phase !== 'reveal') {
+          if (mounted) {
             setErrorMsg('O host encerrou a sala.');
             setPhase('error');
           }
