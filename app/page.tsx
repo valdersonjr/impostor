@@ -130,7 +130,7 @@ export default function ConfigPage() {
 
       {/* CTA */}
       <div
-        className="w-full max-w-xs animate-fade-up"
+        className="w-full max-w-xs flex flex-col gap-3 animate-fade-up"
         style={{ animationDelay: '240ms' }}
       >
         <button
@@ -142,11 +142,22 @@ export default function ConfigPage() {
             border: '1px solid #c41e1e40',
           }}
         >
-          INICIAR JOGO
+          JOGO RÁPIDO
+        </button>
+        <button
+          onClick={() => router.push(`/criar?impostors=${impostors}`)}
+          className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
+          style={{
+            background: 'transparent',
+            color: '#555555',
+            border: '1px solid #1f1f1f',
+          }}
+        >
+          CRIAR SALA
         </button>
         <p
-          className="mt-4 text-center text-xs tracking-widest uppercase"
-          style={{ color: '#333333' }}
+          className="text-center text-xs tracking-widest uppercase"
+          style={{ color: '#2a2a2a' }}
         >
           {players} jogadores · {impostors} impostor{impostors > 1 ? 'es' : ''}
         </p>

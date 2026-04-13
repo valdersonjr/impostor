@@ -41,7 +41,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${cinzel.variable} ${inter.variable} h-full`}>
-      <body className="h-full bg-void text-pure antialiased" style={{ fontFamily: 'var(--font-inter)' }}>
+      <body className="h-full bg-void text-pure antialiased" style={{ fontFamily: 'var(--font-inter)' }} suppressHydrationWarning>
         {children}
         <Script id="sw" strategy="afterInteractive">
           {`if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');`}
