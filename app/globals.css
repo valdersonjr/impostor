@@ -62,15 +62,6 @@
   to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes red-flash {
-  0%   { background-color: #c41e1e; }
-  100% { background-color: transparent; }
-}
-
-@keyframes white-flash {
-  0%   { background-color: #e8e4dc; }
-  100% { background-color: transparent; }
-}
 
 /* ─── Utility classes ────────────────────────────────────────── */
 .animate-blood-pulse  { animation: blood-pulse 2.5s ease-in-out infinite; }
@@ -78,8 +69,6 @@
 .animate-fade-up      { animation: fade-up 0.5s ease-out both; }
 .animate-fade-in      { animation: fade-in 0.4s ease-out both; }
 .animate-scale-in     { animation: scale-in 0.35s ease-out both; }
-.animate-red-flash    { animation: red-flash 0.35s ease-out forwards; }
-.animate-white-flash  { animation: white-flash 0.35s ease-out forwards; }
 
 /* ─── Grain overlay ──────────────────────────────────────────── */
 .grain::after {

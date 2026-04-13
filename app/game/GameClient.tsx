@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 type Phase = 'idle' | 'revealed' | 'finished';
-type FlashType = 'none' | 'red' | 'white';
 
 interface Player {
   id: number;
@@ -201,18 +200,6 @@ function FinishedScreen({ onRestart }: { onRestart: () => void }) {
   );
 }
 
-/* ── Flash overlay ───────────────────────────────────────────── */
-function Flash({ type }: { type: FlashType }) {
-  if (type === 'none') return null;
-  return (
-    <div
-      className={`fixed inset-0 z-50 pointer-events-none ${
-        type === 'red' ? 'animate-red-flash' : 'animate-white-flash'
-      }`}
-    />
-  );
-}
-
 /* ── Main component ──────────────────────────────────────────── */
 export default function GameClient() {
   const params = useSearchParams();
@@ -226,8 +213,6 @@ export default function GameClient() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [phase, setPhase] = useState<Phase>('idle');
   const [canContinue, setCanContinue] = useState(false);
-  const [flash, setFlash] = useState<FlashType>('none');
-  const [flashing, setFlashing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   /* Prevent screen sleep during the distribution phase */
@@ -273,17 +258,10 @@ export default function GameClient() {
   }, [phase, currentIndex]);
 
   const handleTap = useCallback(() => {
-    if (loading || flashing) return;
+    if (loading) return;
 
     if (phase === 'idle') {
-      const isImpostor = players[currentIndex]?.isImpostor ?? false;
-      setFlashing(true);
-      setFlash(isImpostor ? 'red' : 'white');
-      setTimeout(() => {
-        setFlash('none');
-        setFlashing(false);
-        setPhase('revealed');
-      }, 280);
+      setPhase('revealed');
       return;
     }
 
@@ -295,7 +273,7 @@ export default function GameClient() {
         setPhase('idle');
       }
     }
-  }, [loading, flashing, phase, players, currentIndex, canContinue]);
+  }, [loading, phase, players, currentIndex, canContinue]);
 
   if (loading) {
     return (
@@ -317,8 +295,6 @@ export default function GameClient() {
       }`}
       onClick={isFinished ? undefined : handleTap}
     >
-      <Flash type={flash} />
-
       {phase === 'idle' && (
         <IdleScreen playerNumber={players[currentIndex]?.id ?? currentIndex + 1} />
       )}
