@@ -79,7 +79,8 @@ export default function ConfigPage() {
   };
 
   return (
-    <main className="grain relative flex h-full flex-col items-center justify-between px-8 py-16 select-none">
+    <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ minHeight: '100%' }}>
+
       {/* Logo + Title */}
       <div className="flex flex-col items-center gap-1 animate-fade-up" style={{ animationDelay: '0ms' }}>
         <div
@@ -92,41 +93,29 @@ export default function ConfigPage() {
           className="w-32 h-px mb-2"
           style={{ background: 'linear-gradient(90deg, transparent, #b8860b, transparent)' }}
         />
-        <h1
-          className="font-cinzel font-bold tracking-[0.4em] text-2xl"
-          style={{ color: '#b8860b' }}
-        >
+        <h1 className="font-cinzel font-bold tracking-[0.4em] text-2xl" style={{ color: '#b8860b' }}>
           IMPOSTOR
         </h1>
-        <p
-          className="mt-2 text-xs tracking-[0.2em] uppercase"
-          style={{ color: '#444444' }}
-        >
+        <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#444444' }}>
           Não confie em ninguém
         </p>
       </div>
+
+      {/* Espaçador flexível — colapsa em telas pequenas */}
+      <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
 
       {/* Steppers */}
       <div
         className="flex flex-col gap-10 w-full max-w-xs animate-fade-up"
         style={{ animationDelay: '120ms' }}
       >
-        <Stepper
-          label="Jogadores"
-          value={players}
-          min={2}
-          max={20}
-          onChange={handlePlayersChange}
-        />
+        <Stepper label="Jogadores" value={players} min={2} max={20} onChange={handlePlayersChange} />
         <div className="w-full h-px" style={{ background: '#1f1f1f' }} />
-        <Stepper
-          label="Impostores"
-          value={impostors}
-          min={1}
-          max={players - 1}
-          onChange={handleImpostorsChange}
-        />
+        <Stepper label="Impostores" value={impostors} min={1} max={players - 1} onChange={handleImpostorsChange} />
       </div>
+
+      {/* Espaçador flexível */}
+      <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
 
       {/* CTA */}
       <div
@@ -147,21 +136,15 @@ export default function ConfigPage() {
         <button
           onClick={() => router.push(`/criar?impostors=${impostors}`)}
           className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
-          style={{
-            background: 'transparent',
-            color: '#555555',
-            border: '1px solid #1f1f1f',
-          }}
+          style={{ background: 'transparent', color: '#555555', border: '1px solid #1f1f1f' }}
         >
           CRIAR SALA
         </button>
-        <p
-          className="text-center text-xs tracking-widest uppercase"
-          style={{ color: '#2a2a2a' }}
-        >
+        <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#2a2a2a' }}>
           {players} jogadores · {impostors} impostor{impostors > 1 ? 'es' : ''}
         </p>
       </div>
+
     </main>
   );
 }

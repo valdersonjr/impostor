@@ -312,7 +312,7 @@ export default function GameClient() {
 
   return (
     <div
-      className={`grain relative h-full w-full flex items-center justify-center ${
+      className={`grain relative h-full w-full flex items-center justify-center overflow-hidden ${
         isFinished ? '' : 'cursor-pointer'
       }`}
       onClick={isFinished ? undefined : handleTap}
