@@ -227,7 +227,6 @@ function RevealScreen({ eliminatedNum, wasImpostor, onNewGame }: {
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 relative animate-scale-in">
       {wasImpostor ? (
         <>
-          <div className="fixed inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 160px 60px rgba(139,0,0,0.4)' }} />
           <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>
             Jogador {eliminatedNum}
           </p>
@@ -408,8 +407,26 @@ export default function HostRoom() {
         wordRef.current = words[Math.floor(Math.random() * words.length)];
       });
 
+    // Mantém a tela do host acesa enquanto a sala está ativa
+    let wakeLock: WakeLockSentinel | null = null;
+    if ('wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').then(l => { wakeLock = l; }).catch(() => {});
+    }
+    // Reacquire WakeLock se o usuário voltar para a aba
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && 'wakeLock' in navigator) {
+        navigator.wakeLock.request('screen').then(l => { wakeLock = l; }).catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     init();
-    return () => { mounted = false; peerRef.current?.destroy(); };
+    return () => {
+      mounted = false;
+      peerRef.current?.destroy();
+      wakeLock?.release();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [broadcastAll, broadcastLobby, triggerVoting, finalizeVotes]);
 
   /* ── Game actions ────────────────────────────────────────────── */
@@ -542,8 +559,7 @@ export default function HostRoom() {
           </div>
         ) : (
           <>
-            <div className="fixed inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 160px 60px rgba(139,0,0,0.55)' }} />
-            <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
+              <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
               <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
                 Você é o
               </p>

@@ -117,11 +117,6 @@ function InnocentScreen({ word, canContinue }: { word: string; canContinue: bool
 function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
   return (
     <>
-      {/* Vignette fixa cobre a tela inteira independente do layout flex */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{ boxShadow: 'inset 0 0 160px 60px rgba(139, 0, 0, 0.55)' }}
-      />
       <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
         <p
           className="text-xs tracking-[0.35em] uppercase"

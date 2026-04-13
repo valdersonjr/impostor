@@ -124,7 +124,6 @@ function RevealScreen({ eliminatedNum, wasImpostor }: { eliminatedNum: number; w
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 animate-scale-in relative">
       {wasImpostor ? (
         <>
-          <div className="fixed inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 160px 60px rgba(139,0,0,0.4)' }} />
           <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>Jogador {eliminatedNum}</p>
           <h2 className="font-cinzel font-black text-center animate-blood-pulse"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
@@ -348,7 +347,6 @@ export default function PlayerRoom() {
           </div>
         ) : (
           <>
-            <div className="fixed inset-0 pointer-events-none" style={{ boxShadow: 'inset 0 0 160px 60px rgba(139,0,0,0.55)' }} />
             <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
               <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
                 Você é o
