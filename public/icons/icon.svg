@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#080808"/>
+  <text
+    x="256"
+    y="390"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="420"
+    font-weight="bold"
+    fill="#C41E1E"
+    text-anchor="middle"
+    letter-spacing="-10"
+  >I</text>
+  <rect x="80" y="420" width="352" height="3" fill="#B8860B" opacity="0.6"/>
+</svg>

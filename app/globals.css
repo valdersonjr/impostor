@@ -1,26 +1,128 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ─── Design tokens ─────────────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-void: #080808;
+  --color-surface: #111111;
+  --color-border: #1f1f1f;
+  --color-ghost: #555555;
+  --color-muted: #888888;
+  --color-pure: #f0ede6;
+  --color-blood: #c41e1e;
+  --color-blood-dark: #8b0000;
+  --color-gold: #b8860b;
+  --color-gold-light: #d4a017;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Animations ─────────────────────────────────────────────── */
+@keyframes blood-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 20px #c41e1e,
+      0 0 60px #c41e1e80,
+      0 0 100px #c41e1e40;
+  }
+  50% {
+    text-shadow:
+      0 0 8px #c41e1e,
+      0 0 30px #c41e1e60;
   }
 }
 
+@keyframes flicker {
+  0%, 89%, 91%, 93%, 100% { opacity: 1; }
+  90%, 92% { opacity: 0.6; }
+}
+
+@keyframes grain {
+  0%, 100% { transform: translate(0, 0); }
+  10%       { transform: translate(-4%, -3%); }
+  20%       { transform: translate(3%, 4%); }
+  30%       { transform: translate(-3%, 2%); }
+  40%       { transform: translate(4%, -4%); }
+  50%       { transform: translate(-2%, 3%); }
+  60%       { transform: translate(3%, -2%); }
+  70%       { transform: translate(-4%, 4%); }
+  80%       { transform: translate(2%, -3%); }
+  90%       { transform: translate(-3%, -4%); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes red-flash {
+  0%   { background-color: #c41e1e; }
+  100% { background-color: transparent; }
+}
+
+@keyframes white-flash {
+  0%   { background-color: #e8e4dc; }
+  100% { background-color: transparent; }
+}
+
+/* ─── Utility classes ────────────────────────────────────────── */
+.animate-blood-pulse  { animation: blood-pulse 2.5s ease-in-out infinite; }
+.animate-flicker      { animation: flicker 6s ease-in-out infinite; }
+.animate-fade-up      { animation: fade-up 0.5s ease-out both; }
+.animate-fade-in      { animation: fade-in 0.4s ease-out both; }
+.animate-scale-in     { animation: scale-in 0.35s ease-out both; }
+.animate-red-flash    { animation: red-flash 0.35s ease-out forwards; }
+.animate-white-flash  { animation: white-flash 0.35s ease-out forwards; }
+
+/* ─── Grain overlay ──────────────────────────────────────────── */
+.grain::after {
+  content: '';
+  position: fixed;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 9999;
+  animation: grain 8s steps(8) infinite;
+}
+
+/* ─── Vignette ───────────────────────────────────────────────── */
+.vignette {
+  box-shadow: inset 0 0 120px 40px rgba(0, 0, 0, 0.8);
+}
+
+.vignette-red {
+  box-shadow: inset 0 0 160px 60px rgba(139, 0, 0, 0.55);
+}
+
+/* ─── Cinzel font helper ─────────────────────────────────────── */
+.font-cinzel {
+  font-family: var(--font-cinzel);
+}
+
+/* ─── Base ───────────────────────────────────────────────────── */
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #080808;
+  color: #f0ede6;
+  height: 100%;
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Prevent double-tap zoom on iOS */
+* {
+  touch-action: manipulation;
 }
