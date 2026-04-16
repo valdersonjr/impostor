@@ -192,7 +192,13 @@ export default function ConfigPage() {
     <>
       {showAbout && <AboutModal t={t} onClose={() => setShowAbout(false)} />}
 
-      <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ minHeight: '100%' }}>
+      <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ minHeight: '100%', background: '#080808' }}>
+
+        {/* Núcleo vermelho no fundo */}
+        <div
+          className="animate-red-core-breathe pointer-events-none fixed inset-0 z-0"
+          style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 38%, #2a000080 0%, transparent 70%)' }}
+        />
 
         {/* Lang toggle */}
         <div className="absolute top-6 right-6 flex items-center gap-1">
@@ -218,35 +224,43 @@ export default function ConfigPage() {
         {/* Vigneta que respira */}
         <div
           className="animate-vignette-breathe pointer-events-none fixed inset-0 z-10"
-          style={{ boxShadow: 'inset 0 0 140px 60px rgba(0,0,0,0.9)' }}
+          style={{ boxShadow: 'inset 0 0 180px 80px rgba(0,0,0,0.97)' }}
         />
 
         {/* Logo + Title */}
         <div className="flex flex-col items-center gap-1 animate-fade-up relative" style={{ animationDelay: '0ms' }}>
 
-          {/* Observadores — dois pontos assimétricos quase invisíveis */}
-          <div className="absolute animate-watcher-fade pointer-events-none" style={{ top: '-1.2rem', left: '50%', transform: 'translateX(-50%)', width: '5rem', height: '0.75rem' }}>
-            <div className="absolute w-1 h-1 rounded-full" style={{ background: '#f0ede6', top: 0, left: '26%' }} />
-            <div className="absolute w-1 h-1 rounded-full" style={{ background: '#f0ede6', top: '4px', left: '65%' }} />
+          {/* Observadores */}
+          <div className="absolute animate-watcher-fade pointer-events-none" style={{ top: '-1.4rem', left: '50%', transform: 'translateX(-50%)', width: '5rem', height: '1rem' }}>
+            <div className="absolute w-1.5 h-1.5 rounded-full" style={{ background: '#c41e1e', top: 0, left: '24%', boxShadow: '0 0 4px #c41e1e' }} />
+            <div className="absolute w-1.5 h-1.5 rounded-full" style={{ background: '#c41e1e', top: '5px', left: '63%', boxShadow: '0 0 4px #c41e1e' }} />
           </div>
 
-          <div
-            className="font-cinzel font-black leading-none animate-flicker animate-ambient-bleed"
-            style={{ fontSize: '7rem', color: '#c41e1e', lineHeight: 1 }}
-          >
-            I
+          <div className="relative">
+            <div
+              className="font-cinzel font-black leading-none animate-flicker animate-ambient-bleed"
+              style={{ fontSize: '7rem', color: '#c41e1e', lineHeight: 1 }}
+            >
+              I
+            </div>
+            {/* Drip de sangue */}
+            <div
+              className="animate-blood-drip absolute left-1/2 top-full pointer-events-none"
+              style={{ width: '1px', background: 'linear-gradient(to bottom, #c41e1e, transparent)', transform: 'translateX(-50%)' }}
+            />
           </div>
+
           <div
             className="w-32 h-px mb-2"
             style={{ background: 'linear-gradient(90deg, transparent, #b8860b, transparent)' }}
           />
           <h1
-            className="font-cinzel font-bold text-2xl animate-letter-breathe"
+            className="font-cinzel font-bold text-2xl animate-letter-breathe animate-text-glitch"
             style={{ color: '#b8860b', letterSpacing: '0.4em' }}
           >
             IMPOSTOR
           </h1>
-          <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#444444' }}>
+          <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#333333' }}>
             {t.tagline}
           </p>
         </div>
