@@ -50,6 +50,12 @@ const T = {
     votes: 'votos',
     tapToReveal: 'toque para revelar',
     tapToHide: 'toque para esconder',
+    tie: 'EMPATE',
+    tieDesc: 'Nenhum jogador foi eliminado',
+    waitingNewVote: 'Aguardando nova votação...',
+    impostorFound: 'IMPOSTOR ENCONTRADO',
+    waitingContinue: 'Aguardando próxima rodada...',
+    allFound: 'Todos os impostores foram encontrados',
   },
   en: {
     yourName: 'YOUR NAME',
@@ -92,6 +98,12 @@ const T = {
     votes: 'votes',
     tapToReveal: 'tap to reveal',
     tapToHide: 'tap to hide',
+    tie: 'TIE',
+    tieDesc: 'No player was eliminated',
+    waitingNewVote: 'Waiting for new vote...',
+    impostorFound: 'IMPOSTOR FOUND',
+    waitingContinue: 'Waiting for next round...',
+    allFound: 'All impostors have been found',
   },
 };
 
@@ -244,53 +256,75 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
 }
 
 /* ── Results screen ──────────────────────────────────────────── */
-function ResultsScreen({ tally, eliminatedNum, t }: { tally: TallyEntry[]; eliminatedNum: number; t: typeof T['pt'] }) {
+function ResultsScreen({ tally, eliminatedNum, isTie, t }: { tally: TallyEntry[]; eliminatedNum: number | null; isTie: boolean; t: typeof T['pt'] }) {
   const maxCount = Math.max(...tally.map(t => t.count), 1);
   return (
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
         <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>{t.resultsTitle}</h2>
+        {isTie && (
+          <p className="text-xs tracking-[0.35em] uppercase animate-stagger-in" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>
+            {t.tie}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-3 flex-1">
-        {tally.map(entry => (
-          <div key={entry.num} className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs tracking-[0.2em] uppercase"
-                style={{ color: entry.num === eliminatedNum ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
-                {entry.name}{entry.num === eliminatedNum && ' ←'}
-              </span>
-              <span className="text-xs font-cinzel" style={{ color: entry.num === eliminatedNum ? '#c41e1e' : '#333333' }}>
-                {entry.count} {entry.count === 1 ? t.vote : t.votes}
-              </span>
+        {tally.map(entry => {
+          const isEliminated = !isTie && entry.num === eliminatedNum;
+          return (
+            <div key={entry.num} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs tracking-[0.2em] uppercase"
+                  style={{ color: isEliminated ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
+                  {entry.name}{isEliminated && ' ←'}
+                </span>
+                <span className="text-xs font-cinzel" style={{ color: isEliminated ? '#c41e1e' : '#333333' }}>
+                  {entry.count} {entry.count === 1 ? t.vote : t.votes}
+                </span>
+              </div>
+              <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
+                <div className="h-px transition-all duration-700"
+                  style={{ width: `${(entry.count / maxCount) * 100}%`, background: isEliminated ? '#c41e1e' : '#2a2a2a' }} />
+              </div>
             </div>
-            <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
-              <div className="h-px transition-all duration-700"
-                style={{ width: `${(entry.count / maxCount) * 100}%`, background: entry.num === eliminatedNum ? '#c41e1e' : '#2a2a2a' }} />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <div className="flex flex-col items-center gap-2 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
-        <p className="text-xs" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-          {t.eliminated(tally.find(e => e.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`)}
-        </p>
-        <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
-          {t.waitingReveal}
-        </p>
+        {isTie ? (
+          <>
+            <p className="text-xs" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>{t.tieDesc}</p>
+            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>{t.waitingNewVote}</p>
+          </>
+        ) : (
+          <>
+            <p className="text-xs" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
+              {t.eliminated(tally.find(e => e.num === eliminatedNum)?.name ?? '')}
+            </p>
+            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
+              {t.waitingReveal}
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 /* ── Reveal screen ───────────────────────────────────────────── */
-function RevealScreen({ eliminatedName, wasImpostor, t }: { eliminatedName: string; wasImpostor: boolean; t: typeof T['pt'] }) {
+function RevealScreen({ eliminatedName, wasImpostor, gameOver, t }: { eliminatedName: string; wasImpostor: boolean; gameOver: boolean; t: typeof T['pt'] }) {
+  // Impostor found and game is over (all impostors caught)
+  const fullVictory = wasImpostor && gameOver;
+  // Impostor found but more remain
+  const partialFind = wasImpostor && !gameOver;
+
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-6 relative overflow-hidden">
       {wasImpostor && (
         <div className="animate-reveal-flood fixed inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at 50% 50%, #3a000080 0%, transparent 70%)' }} />
       )}
-      {wasImpostor ? (
+      {fullVictory && (
         <>
           <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
           <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
@@ -301,7 +335,20 @@ function RevealScreen({ eliminatedName, wasImpostor, t }: { eliminatedName: stri
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
             style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.townWon}</p>
         </>
-      ) : (
+      )}
+      {partialFind && (
+        <>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
+          <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
+            style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
+            {t.impostorFound}
+          </h2>
+          <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.waitingContinue}</p>
+        </>
+      )}
+      {!wasImpostor && (
         <>
           <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#2a2a2a', animationDelay: '0ms' }}>{eliminatedName}</p>
           <div className="w-16 h-px animate-stagger-in" style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
@@ -443,7 +490,8 @@ export default function PlayerRoom() {
   const [voteCount, setVoteCount] = useState(0);
   const [tally, setTally] = useState<TallyEntry[]>([]);
   const [eliminatedNum, setEliminatedNum] = useState<number | null>(null);
-  const [revealData, setRevealData] = useState<{ eliminatedName: string; wasImpostor: boolean } | null>(null);
+  const [isTie, setIsTie] = useState(false);
+  const [revealData, setRevealData] = useState<{ eliminatedName: string; wasImpostor: boolean; gameOver: boolean } | null>(null);
 
   const peerRef = useRef<any>(null);
   const connRef = useRef<any>(null);
@@ -515,15 +563,24 @@ export default function PlayerRoom() {
             setPhase('voting');
           }
 
+          if (msg.type === 'revote') {
+            setHasRequestedVote(false);
+            setSelectedVote(null);
+            setConfirmedVote(null);
+            setVoteCount(0);
+            setIsTie(false);
+          }
+
           if (msg.type === 'vote_results') {
             setTally(msg.tally);
-            setEliminatedNum(msg.eliminatedNum);
+            setEliminatedNum(msg.eliminatedNum ?? null);
+            setIsTie(msg.isTie ?? false);
             setPhase('results');
           }
 
           if (msg.type === 'impostor_reveal') {
             vibrate(msg.wasImpostor ? [100, 50, 100, 50, 400] : [60]);
-            setRevealData({ eliminatedName: msg.eliminatedName, wasImpostor: msg.wasImpostor });
+            setRevealData({ eliminatedName: msg.eliminatedName, wasImpostor: msg.wasImpostor, gameOver: msg.gameOver ?? true });
             setPhase('reveal');
           }
         });
@@ -639,13 +696,13 @@ export default function PlayerRoom() {
   }
 
   /* ── Results ── */
-  if (phase === 'results' && eliminatedNum !== null) {
-    return <>{flashOverlay}<ResultsScreen tally={tally} eliminatedNum={eliminatedNum} t={t} /></>;
+  if (phase === 'results') {
+    return <>{flashOverlay}<ResultsScreen tally={tally} eliminatedNum={eliminatedNum} isTie={isTie} t={t} /></>;
   }
 
   /* ── Reveal ── */
   if (phase === 'reveal' && revealData) {
-    return <>{flashOverlay}<RevealScreen eliminatedName={revealData.eliminatedName} wasImpostor={revealData.wasImpostor} t={t} /></>;
+    return <>{flashOverlay}<RevealScreen eliminatedName={revealData.eliminatedName} wasImpostor={revealData.wasImpostor} gameOver={revealData.gameOver} t={t} /></>;
   }
 
   /* ── Role ── */

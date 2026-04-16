@@ -44,7 +44,7 @@ const T = {
     voted: (c: number, t: number) => `${c}/${t} votaram`,
     resultsTitle: 'RESULTADO',
     eliminated: (name: string) => `${name} foi eliminado`,
-    revealImpostor: 'REVELAR IMPOSTOR',
+    revealImpostor: 'REVELAR',
     waitingReveal: 'Aguardando o host revelar...',
     wasImpostor: 'ERA O IMPOSTOR',
     townWon: 'A cidade venceu',
@@ -55,6 +55,15 @@ const T = {
     votes: 'votos',
     tapToReveal: 'toque para revelar',
     tapToHide: 'toque para esconder',
+    tie: 'EMPATE',
+    tieDesc: 'Ninguém foi identificado.',
+    newVote: 'NOVA VOTAÇÃO',
+    waitingNewVote: 'Nova votação em breve...',
+    impostorFound: 'IMPOSTOR ENCONTRADO',
+    continueHunt: (r: number) => `${r} impostor${r > 1 ? 'es' : ''} restante${r > 1 ? 's' : ''}`,
+    continueGame: 'CONTINUAR',
+    waitingContinue: 'Aguardando próxima rodada...',
+    allFound: 'TODOS ENCONTRADOS',
   },
   en: {
     yourName: 'YOUR NAME',
@@ -89,7 +98,7 @@ const T = {
     voted: (c: number, t: number) => `${c}/${t} voted`,
     resultsTitle: 'RESULTS',
     eliminated: (name: string) => `${name} was eliminated`,
-    revealImpostor: 'REVEAL IMPOSTOR',
+    revealImpostor: 'REVEAL',
     waitingReveal: 'Waiting for host to reveal...',
     wasImpostor: 'WAS THE IMPOSTOR',
     townWon: 'The town won',
@@ -100,6 +109,15 @@ const T = {
     votes: 'votes',
     tapToReveal: 'tap to reveal',
     tapToHide: 'tap to hide',
+    tie: 'TIE',
+    tieDesc: 'No one was identified.',
+    newVote: 'NEW VOTE',
+    waitingNewVote: 'New vote coming...',
+    impostorFound: 'IMPOSTOR FOUND',
+    continueHunt: (r: number) => `${r} impostor${r > 1 ? 's' : ''} remaining`,
+    continueGame: 'CONTINUE',
+    waitingContinue: 'Waiting for next round...',
+    allFound: 'ALL FOUND',
   },
 };
 
@@ -352,19 +370,30 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
   );
 }
 
-function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
+function ResultsScreen({ tally, eliminatedNum, isTie, isHost, onReveal, onRevote, t }: {
   tally: TallyEntry[];
-  eliminatedNum: number;
+  eliminatedNum: number | null;
+  isTie: boolean;
   isHost: boolean;
   onReveal?: () => void;
+  onRevote?: () => void;
   t: typeof T['pt'];
 }) {
   const maxCount = Math.max(...tally.map(t => t.count), 1);
-  const eliminatedName = tally.find(t => t.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`;
+  const eliminatedName = eliminatedNum !== null
+    ? (tally.find(t => t.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`)
+    : null;
   return (
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
-        <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>{t.resultsTitle}</h2>
+        <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: isTie ? '#c41e1e' : '#b8860b' }}>
+          {isTie ? t.tie : t.resultsTitle}
+        </h2>
+        {isTie && (
+          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>
+            {t.tieDesc}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-3 flex-1">
         {tally.map(entry => (
@@ -386,25 +415,46 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
         ))}
       </div>
       <div className="flex flex-col items-center gap-3 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
-        <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>{t.eliminated(eliminatedName)}</p>
-        {isHost && onReveal && (
-          <button onClick={onReveal}
-            className="w-full py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #8b0000, #c41e1e)', color: '#f0ede6', border: '1px solid #c41e1e40' }}>
-            {t.revealImpostor}
-          </button>
-        )}
-        {!isHost && (
-          <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>{t.waitingReveal}</p>
+        {isTie ? (
+          <>
+            {isHost && onRevote && (
+              <button onClick={onRevote}
+                className="w-full py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #8b0000, #c41e1e)', color: '#f0ede6', border: '1px solid #c41e1e40' }}>
+                {t.newVote}
+              </button>
+            )}
+            {!isHost && (
+              <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>{t.waitingNewVote}</p>
+            )}
+          </>
+        ) : (
+          <>
+            {eliminatedName && (
+              <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>{t.eliminated(eliminatedName)}</p>
+            )}
+            {isHost && onReveal && (
+              <button onClick={onReveal}
+                className="w-full py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #8b0000, #c41e1e)', color: '#f0ede6', border: '1px solid #c41e1e40' }}>
+                {t.revealImpostor}
+              </button>
+            )}
+            {!isHost && (
+              <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>{t.waitingReveal}</p>
+            )}
+          </>
         )}
       </div>
     </div>
   );
 }
 
-function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
-  eliminatedName: string; wasImpostor: boolean; onNewGame: () => void; t: typeof T['pt'];
+function RevealScreen({ eliminatedName, wasImpostor, gameOver, remaining, isHost, onNewGame, onContinue, t }: {
+  eliminatedName: string; wasImpostor: boolean; gameOver: boolean; remaining: number;
+  isHost: boolean; onNewGame: () => void; onContinue?: () => void; t: typeof T['pt'];
 }) {
+  const partial = wasImpostor && !gameOver;
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-6 relative overflow-hidden">
       {wasImpostor && (
@@ -417,10 +467,12 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
           <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
           <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
             style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
-            {t.wasImpostor}
+            {partial ? t.impostorFound : t.wasImpostor}
           </h2>
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
-            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.townWon}</p>
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
+            {partial ? t.continueHunt(remaining) : t.townWon}
+          </p>
         </>
       ) : (
         <>
@@ -434,11 +486,26 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
             style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.impostorLoose}</p>
         </>
       )}
-      <button onClick={onNewGame}
-        className="absolute bottom-10 px-8 py-4 font-cinzel text-xs tracking-[0.3em] transition-all active:scale-95 animate-stagger-in"
-        style={{ border: '1px solid #1a1a1a', color: '#333333', animationDelay: '2000ms' }}>
-        {t.newGame}
-      </button>
+      {isHost ? (
+        partial ? (
+          <button onClick={onContinue}
+            className="absolute bottom-10 w-48 py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95 animate-stagger-in"
+            style={{ background: 'linear-gradient(135deg, #8b0000, #c41e1e)', color: '#f0ede6', border: '1px solid #c41e1e40', animationDelay: '1600ms' }}>
+            {t.continueGame}
+          </button>
+        ) : (
+          <button onClick={onNewGame}
+            className="absolute bottom-10 px-8 py-4 font-cinzel text-xs tracking-[0.3em] transition-all active:scale-95 animate-stagger-in"
+            style={{ border: '1px solid #1a1a1a', color: '#333333', animationDelay: '2000ms' }}>
+            {t.newGame}
+          </button>
+        )
+      ) : (
+        <p className="absolute bottom-10 text-xs tracking-[0.25em] uppercase animate-stagger-in"
+          style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)', animationDelay: '1600ms' }}>
+          {partial ? t.waitingContinue : ''}
+        </p>
+      )}
     </div>
   );
 }
@@ -543,6 +610,9 @@ export default function HostRoom() {
   const [tally, setTally] = useState<TallyEntry[]>([]);
   const [eliminatedNum, setEliminatedNum] = useState<number | null>(null);
   const [eliminatedName, setEliminatedName] = useState<string | null>(null);
+  const [isTie, setIsTie] = useState(false);
+  const [foundImpostorNums, setFoundImpostorNums] = useState<Set<number>>(new Set());
+  const [revealGameOver, setRevealGameOver] = useState(false);
 
   // Refs
   const peerRef = useRef<any>(null);
@@ -565,6 +635,8 @@ export default function HostRoom() {
   const eliminatedNumRef = useRef<number | null>(null);
   const revealStateRef = useRef<{ eliminatedName: string; wasImpostor: boolean } | null>(null);
   const roundDurationRef = useRef(0);
+  const votingTriggeredRef = useRef(false);
+  const foundImpostorNumsRef = useRef<Set<number>>(new Set());
 
   // Keep gamePhaseRef in sync
   useEffect(() => { gamePhaseRef.current = phase; }, [phase]);
@@ -634,11 +706,14 @@ export default function HostRoom() {
       })
       .sort((a, b) => b.count - a.count || a.num - b.num);
 
-    const eliminated = sorted[0].num;
-    const elName = sorted[0].name;
+    const tied = sorted.length >= 2 && sorted[0].count === sorted[1].count && sorted[0].count > 0;
+    const eliminated = tied ? null : sorted[0].num;
+    const elName = tied ? null : sorted[0].name;
+
     tallyRef.current = sorted;
     eliminatedNumRef.current = eliminated;
     setTally(sorted);
+    setIsTie(tied);
     setEliminatedNum(eliminated);
     setEliminatedName(elName);
     setPhase('results');
@@ -646,12 +721,37 @@ export default function HostRoom() {
       type: 'vote_results',
       tally: sorted.map(({ num, count, name }) => ({ num, count, name })),
       eliminatedNum: eliminated,
+      isTie: tied,
     });
   }, [broadcastAll]);
 
   const triggerVoting = useCallback(() => {
+    if (votingTriggeredRef.current) return;
+    votingTriggeredRef.current = true;
     setPhase('voting');
     broadcastAll({ type: 'voting_open', players: allPlayersRef.current });
+  }, [broadcastAll]);
+
+  const triggerRevote = useCallback(() => {
+    // Reset vote state for new round
+    votesRef.current.clear();
+    voteRequestsRef.current.clear();
+    confirmedVoteRef.current = null;
+    hasRequestedVoteRef.current = false;
+    votingTriggeredRef.current = false;
+    setHasRequestedVote(false);
+    setConfirmedVote(null);
+    setSelectedVote(null);
+    setVoteCount(0);
+    setVoteRequestCount(0);
+    setIsTie(false);
+    setEliminatedNum(null);
+    broadcastAll({ type: 'revote' });
+    // Trigger new vote immediately
+    votingTriggeredRef.current = false;
+    setPhase('voting');
+    broadcastAll({ type: 'voting_open', players: allPlayersRef.current });
+    votingTriggeredRef.current = true;
   }, [broadcastAll]);
 
   /* ── PeerJS init ─────────────────────────────────────────────── */
@@ -820,6 +920,9 @@ export default function HostRoom() {
   };
 
   const startGame = useCallback(() => {
+    votingTriggeredRef.current = false;
+    foundImpostorNumsRef.current = new Set();
+    setFoundImpostorNums(new Set());
     vibrate([40, 30, 120]);
     const allSlots = [
       { id: 'host', num: 1, name: hostNameRef.current },
@@ -878,9 +981,19 @@ export default function HostRoom() {
     const wasImpostor = impostorNumsRef.current.has(eliminatedNum);
     const player = allPlayersRef.current.find(p => p.num === eliminatedNum);
     const elName = player?.name ?? `Jogador ${eliminatedNum}`;
+
+    let gameOver = true;
+    if (wasImpostor) {
+      const newFound = new Set([...foundImpostorNumsRef.current, eliminatedNum]);
+      foundImpostorNumsRef.current = newFound;
+      setFoundImpostorNums(newFound);
+      gameOver = [...impostorNumsRef.current].every(n => newFound.has(n));
+    }
+
     revealStateRef.current = { eliminatedName: elName, wasImpostor };
+    setRevealGameOver(gameOver);
     setEliminatedName(elName);
-    broadcastAll({ type: 'impostor_reveal', eliminatedName: elName, wasImpostor });
+    broadcastAll({ type: 'impostor_reveal', eliminatedName: elName, wasImpostor, gameOver });
     setPhase('reveal');
   }, [eliminatedNum, broadcastAll]);
 
@@ -939,11 +1052,19 @@ export default function HostRoom() {
   }
 
   /* ── Render: Results ── */
-  if (phase === 'results' && eliminatedNum !== null) {
+  if (phase === 'results') {
     return (
       <>
         {flashOverlay}
-        <ResultsScreen tally={tally} eliminatedNum={eliminatedNum} isHost={true} onReveal={revealImpostor} t={t} />
+        <ResultsScreen
+          tally={tally}
+          eliminatedNum={eliminatedNum}
+          isTie={isTie}
+          isHost={true}
+          onReveal={eliminatedNum !== null ? revealImpostor : undefined}
+          onRevote={triggerRevote}
+          t={t}
+        />
       </>
     );
   }
@@ -951,10 +1072,20 @@ export default function HostRoom() {
   /* ── Render: Reveal ── */
   if (phase === 'reveal' && eliminatedName !== null) {
     const wasImpostor = eliminatedNum !== null && impostorNumsRef.current.has(eliminatedNum);
+    const remaining = impostorNumsRef.current.size - foundImpostorNums.size;
     return (
       <>
         {flashOverlay}
-        <RevealScreen eliminatedName={eliminatedName} wasImpostor={wasImpostor} onNewGame={() => router.push('/')} t={t} />
+        <RevealScreen
+          eliminatedName={eliminatedName}
+          wasImpostor={wasImpostor}
+          gameOver={revealGameOver}
+          remaining={remaining}
+          isHost={true}
+          onNewGame={() => router.push('/')}
+          onContinue={triggerRevote}
+          t={t}
+        />
       </>
     );
   }
