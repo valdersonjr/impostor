@@ -26,7 +26,10 @@ export const metadata: Metadata = {
     title: 'Impostor',
   },
   icons: {
-    apple: '/icons/icon.svg',
+    apple: [
+      { url: '/icons/icon-192.png', sizes: '192x192' },
+      { url: '/icons/icon-512.png', sizes: '512x512' },
+    ],
   },
 };
 
@@ -36,6 +39,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

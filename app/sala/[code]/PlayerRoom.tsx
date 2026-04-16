@@ -252,26 +252,36 @@ function ResultsScreen({ tally, eliminatedNum, t }: { tally: TallyEntry[]; elimi
 /* ── Reveal screen ───────────────────────────────────────────── */
 function RevealScreen({ eliminatedName, wasImpostor, t }: { eliminatedName: string; wasImpostor: boolean; t: typeof T['pt'] }) {
   return (
-    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 animate-scale-in relative">
+    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-6 relative overflow-hidden">
+      {wasImpostor && (
+        <div className="animate-reveal-flood fixed inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 50% 50%, #3a000080 0%, transparent 70%)' }} />
+      )}
       {wasImpostor ? (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>{eliminatedName}</p>
-          <h2 className="font-cinzel font-black text-center animate-blood-pulse"
-            style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
+            style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
+          <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
+            style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasImpostor}
           </h2>
-          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e60', fontFamily: 'var(--font-inter)' }}>
+          <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
             {t.townWon}
           </p>
         </>
       ) : (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#444444' }}>{eliminatedName}</p>
-          <h2 className="font-cinzel font-bold text-center"
-            style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#888888', letterSpacing: '0.05em', lineHeight: 1.1 }}>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
+            style={{ color: '#2a2a2a', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <div className="w-16 h-px animate-stagger-in" style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
+          <h2 className="font-cinzel font-bold text-center animate-stagger-in"
+            style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#444444', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasInnocent}
           </h2>
-          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
+            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
             {t.impostorLoose}
           </p>
         </>
@@ -290,6 +300,19 @@ export default function PlayerRoom() {
   const t = T[lang] ?? T.pt;
 
   const [phase, setPhase] = useState<Phase>('naming');
+  const [phaseFlash, setPhaseFlash] = useState(false);
+
+  const vibrate = (pattern: number | number[]) => {
+    if ('vibrate' in navigator) navigator.vibrate(pattern);
+  };
+
+  useEffect(() => {
+    if (['role', 'voting', 'results', 'reveal'].includes(phase)) {
+      setPhaseFlash(true);
+      const timer = setTimeout(() => setPhaseFlash(false), 550);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
   const [name, setName] = useState('');
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [myRole, setMyRole] = useState<{ role: 'innocent' | 'impostor'; word: string } | null>(null);
@@ -358,6 +381,7 @@ export default function PlayerRoom() {
           }
 
           if (msg.type === 'role') {
+            vibrate(msg.role === 'impostor' ? [80, 40, 80, 40, 200] : [40, 30, 100]);
             setMyRole({ role: msg.role, word: msg.word ?? '' });
             setPhase('role');
           }
@@ -368,6 +392,7 @@ export default function PlayerRoom() {
           }
 
           if (msg.type === 'voting_open') {
+            vibrate([200]);
             setVotingPlayers(msg.players);
             setVoteTotal(msg.players.length);
             setPhase('voting');
@@ -380,6 +405,7 @@ export default function PlayerRoom() {
           }
 
           if (msg.type === 'impostor_reveal') {
+            vibrate(msg.wasImpostor ? [100, 50, 100, 50, 400] : [60]);
             setRevealData({ eliminatedName: msg.eliminatedName, wasImpostor: msg.wasImpostor });
             setPhase('reveal');
           }
@@ -457,36 +483,45 @@ export default function PlayerRoom() {
     );
   }
 
+  const flashOverlay = phaseFlash ? (
+    <div className="animate-phase-flash fixed inset-0 z-50 pointer-events-none" style={{ background: '#000' }} />
+  ) : null;
+
   /* ── Voting ── */
   if (phase === 'voting') {
     return (
-      <VotingScreen
-        players={votingPlayers}
-        myNum={myNum}
-        selectedVote={selectedVote}
-        confirmedVote={confirmedVote}
-        voteCount={voteCount}
-        total={voteTotal}
-        onSelect={setSelectedVote}
-        onConfirm={confirmVote}
-        t={t}
-      />
+      <>
+        {flashOverlay}
+        <VotingScreen
+          players={votingPlayers}
+          myNum={myNum}
+          selectedVote={selectedVote}
+          confirmedVote={confirmedVote}
+          voteCount={voteCount}
+          total={voteTotal}
+          onSelect={setSelectedVote}
+          onConfirm={confirmVote}
+          t={t}
+        />
+      </>
     );
   }
 
   /* ── Results ── */
   if (phase === 'results' && eliminatedNum !== null) {
-    return <ResultsScreen tally={tally} eliminatedNum={eliminatedNum} t={t} />;
+    return <>{flashOverlay}<ResultsScreen tally={tally} eliminatedNum={eliminatedNum} t={t} /></>;
   }
 
   /* ── Reveal ── */
   if (phase === 'reveal' && revealData) {
-    return <RevealScreen eliminatedName={revealData.eliminatedName} wasImpostor={revealData.wasImpostor} t={t} />;
+    return <>{flashOverlay}<RevealScreen eliminatedName={revealData.eliminatedName} wasImpostor={revealData.wasImpostor} t={t} /></>;
   }
 
   /* ── Role ── */
   if (phase === 'role' && myRole) {
     return (
+      <>
+      {flashOverlay}
       <div className="grain h-full flex items-center justify-center relative pb-20">
         {myRole.role === 'innocent' ? (
           <div className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in">
@@ -517,8 +552,8 @@ export default function PlayerRoom() {
           </>
         )}
         {/* Vote request banner */}
-        <div className="fixed bottom-0 left-0 right-0 px-6 py-5 flex items-center justify-between"
-          style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a' }}>
+        <div className="fixed bottom-0 left-0 right-0 px-6 flex items-center justify-between"
+          style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a', paddingTop: '1.25rem', paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
           <div>
             <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
               {t.voting}
@@ -540,6 +575,7 @@ export default function PlayerRoom() {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
@@ -551,16 +587,12 @@ export default function PlayerRoom() {
         <span className="font-cinzel font-bold text-xl" style={{ color: '#f0ede6' }}>{code.toUpperCase()}</span>
       </div>
 
-      <div className="flex flex-col items-center gap-3 py-8">
-        <div className="flex gap-1">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="w-1 h-1 rounded-full animate-pulse"
-              style={{ background: '#c41e1e', animationDelay: `${i * 300}ms` }} />
-          ))}
-        </div>
-        <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>
+      <div className="flex flex-col items-center gap-4 py-8">
+        <div className="w-full h-px animate-pulse" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e30, transparent)', animationDuration: '2.5s' }} />
+        <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
           {t.waitingHost}
         </p>
+        <div className="w-full h-px animate-pulse" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e15, transparent)', animationDuration: '3.5s', animationDelay: '1s' }} />
       </div>
 
       <div className="flex flex-col gap-0">

@@ -184,8 +184,8 @@ function VoteRequestBanner({ requested, count, total, onRequest, t }: {
   requested: boolean; count: number; total: number; onRequest: () => void; t: typeof T['pt'];
 }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 px-6 py-5 flex items-center justify-between"
-      style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a' }}>
+    <div className="fixed bottom-0 left-0 right-0 px-6 flex items-center justify-between"
+      style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a', paddingTop: '1.25rem', paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
       <div>
         <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
           {t.voting}
@@ -355,37 +355,49 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
   eliminatedName: string; wasImpostor: boolean; onNewGame: () => void; t: typeof T['pt'];
 }) {
   return (
-    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 relative animate-scale-in">
+    <div className="grain h-full flex flex-col items-center justify-center px-8 gap-6 relative overflow-hidden">
+      {wasImpostor && (
+        <div className="animate-reveal-flood fixed inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at 50% 50%, #3a000080 0%, transparent 70%)' }} />
+      )}
       {wasImpostor ? (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#c41e1e80' }}>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
+            style={{ color: '#c41e1e50', animationDelay: '0ms' }}>
             {eliminatedName}
           </p>
-          <h2 className="font-cinzel font-black text-center animate-blood-pulse"
-            style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
+          <div className="w-16 h-px animate-stagger-in"
+            style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
+          <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
+            style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasImpostor}
           </h2>
-          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e60', fontFamily: 'var(--font-inter)' }}>
+          <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
             {t.townWon}
           </p>
         </>
       ) : (
         <>
-          <p className="font-cinzel text-sm tracking-[0.3em] uppercase" style={{ color: '#444444' }}>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
+            style={{ color: '#2a2a2a', animationDelay: '0ms' }}>
             {eliminatedName}
           </p>
-          <h2 className="font-cinzel font-bold text-center"
-            style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#888888', letterSpacing: '0.05em', lineHeight: 1.1 }}>
+          <div className="w-16 h-px animate-stagger-in"
+            style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
+          <h2 className="font-cinzel font-bold text-center animate-stagger-in"
+            style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#444444', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasInnocent}
           </h2>
-          <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
+            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
             {t.impostorLoose}
           </p>
         </>
       )}
       <button onClick={onNewGame}
-        className="absolute bottom-10 px-8 py-4 font-cinzel text-xs tracking-[0.3em] transition-all active:scale-95"
-        style={{ border: '1px solid #1f1f1f', color: '#444444' }}>
+        className="absolute bottom-10 px-8 py-4 font-cinzel text-xs tracking-[0.3em] transition-all active:scale-95 animate-stagger-in"
+        style={{ border: '1px solid #1a1a1a', color: '#333333', animationDelay: '2000ms' }}>
         {t.newGame}
       </button>
     </div>
@@ -401,6 +413,15 @@ export default function HostRoom() {
   const t = T[lang] ?? T.pt;
 
   const [phase, setPhase] = useState<Phase>('naming');
+  const [phaseFlash, setPhaseFlash] = useState(false);
+
+  useEffect(() => {
+    if (['role', 'voting', 'results', 'reveal'].includes(phase)) {
+      setPhaseFlash(true);
+      const t = setTimeout(() => setPhaseFlash(false), 550);
+      return () => clearTimeout(t);
+    }
+  }, [phase]);
   const [hostName, setHostName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomUrl, setRoomUrl] = useState('');
@@ -595,7 +616,12 @@ export default function HostRoom() {
   }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes, lang]);
 
   /* ── Game actions ────────────────────────────────────────────── */
+  const vibrate = (pattern: number | number[]) => {
+    if ('vibrate' in navigator) navigator.vibrate(pattern);
+  };
+
   const startGame = useCallback(() => {
+    vibrate([40, 30, 120]);
     const allSlots = [
       { id: 'host', num: 1, name: hostNameRef.current },
       ...playersRef.current.map(p => ({ id: p.peerId, num: p.num, name: p.name })),
@@ -664,6 +690,10 @@ export default function HostRoom() {
 
   const totalInLobby = 1 + players.length;
 
+  const flashOverlay = phaseFlash ? (
+    <div className="animate-phase-flash fixed inset-0 z-50 pointer-events-none" style={{ background: '#000' }} />
+  ) : null;
+
   /* ── Render: Naming ── */
   if (phase === 'naming') {
     return (
@@ -688,30 +718,36 @@ export default function HostRoom() {
   /* ── Render: Voting ── */
   if (phase === 'voting') {
     return (
-      <VotingScreen
-        players={allPlayers}
-        myNum={1}
-        selectedVote={selectedVote}
-        confirmedVote={confirmedVote}
-        voteCount={voteCount}
-        total={totalPlayers}
-        onSelect={setSelectedVote}
-        onConfirm={confirmVote}
-        t={t}
-      />
+      <>
+        {flashOverlay}
+        <VotingScreen
+          players={allPlayers}
+          myNum={1}
+          selectedVote={selectedVote}
+          confirmedVote={confirmedVote}
+          voteCount={voteCount}
+          total={totalPlayers}
+          onSelect={setSelectedVote}
+          onConfirm={confirmVote}
+          t={t}
+        />
+      </>
     );
   }
 
   /* ── Render: Results ── */
   if (phase === 'results' && eliminatedNum !== null) {
     return (
-      <ResultsScreen
-        tally={tally}
-        eliminatedNum={eliminatedNum}
-        isHost={true}
-        onReveal={revealImpostor}
-        t={t}
-      />
+      <>
+        {flashOverlay}
+        <ResultsScreen
+          tally={tally}
+          eliminatedNum={eliminatedNum}
+          isHost={true}
+          onReveal={revealImpostor}
+          t={t}
+        />
+      </>
     );
   }
 
@@ -719,18 +755,23 @@ export default function HostRoom() {
   if (phase === 'reveal' && eliminatedName !== null) {
     const wasImpostor = eliminatedNum !== null && impostorNumsRef.current.has(eliminatedNum);
     return (
-      <RevealScreen
-        eliminatedName={eliminatedName}
-        wasImpostor={wasImpostor}
-        onNewGame={() => router.push('/')}
-        t={t}
-      />
+      <>
+        {flashOverlay}
+        <RevealScreen
+          eliminatedName={eliminatedName}
+          wasImpostor={wasImpostor}
+          onNewGame={() => router.push('/')}
+          t={t}
+        />
+      </>
     );
   }
 
   /* ── Render: Role ── */
   if (phase === 'role' && myRole) {
     return (
+      <>
+      {flashOverlay}
       <div className="grain h-full flex items-center justify-center relative pb-20">
         {myRole.role === 'innocent' ? (
           <div className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in">
@@ -768,6 +809,7 @@ export default function HostRoom() {
           t={t}
         />
       </div>
+      </>
     );
   }
 
@@ -785,8 +827,8 @@ export default function HostRoom() {
       </div>
 
       <div className="flex flex-col items-center gap-4">
-        <div className="p-4" style={{ background: '#f0ede6' }}>
-          <QRCodeSVG value={roomUrl} size={180} bgColor="#f0ede6" fgColor="#080808" />
+        <div className="p-3" style={{ border: '1px solid #1f1f1f' }}>
+          <QRCodeSVG value={roomUrl} size={180} bgColor="#080808" fgColor="#c8c4bc" />
         </div>
         <button onClick={copyLink}
           className="text-xs tracking-[0.25em] uppercase transition-all active:scale-95"
