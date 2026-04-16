@@ -337,10 +337,10 @@ export default function PlayerRoom() {
   const myNumRef = useRef<number | null>(null);
   const myNumSetRef = useRef(false);
   const nameRef = useRef('');
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     if (phase !== 'connecting') return;
-    let mounted = true;
 
     const init = async () => {
       const { default: Peer } = await import('peerjs');
@@ -348,24 +348,24 @@ export default function PlayerRoom() {
       peerRef.current = peer;
 
       peer.on('open', () => {
-        if (!mounted) return;
+        if (!mountedRef.current) return;
         const hostId = `${PEER_PREFIX}${code.toLowerCase()}`;
         const conn = peer.connect(hostId, { reliable: true });
         connRef.current = conn;
 
         const timeout = setTimeout(() => {
-          if (mounted) { setErrorMsg(t.errNotFound); setPhase('error'); }
+          if (mountedRef.current) { setErrorMsg(t.errNotFound); setPhase('error'); }
         }, 8000);
 
         conn.on('open', () => {
-          if (!mounted) return;
+          if (!mountedRef.current) return;
           clearTimeout(timeout);
           try { conn.send({ type: 'join', name: nameRef.current }); } catch {}
           setPhase('waiting');
         });
 
         conn.on('data', (msg: any) => {
-          if (!mounted) return;
+          if (!mountedRef.current) return;
 
           if (msg.type === 'lobby') {
             const players: LobbyPlayer[] = msg.players;
@@ -412,30 +412,33 @@ export default function PlayerRoom() {
         });
 
         conn.on('close', () => {
-          if (mounted) {
+          if (mountedRef.current) {
             setErrorMsg(t.errClosed);
             setPhase('error');
           }
         });
 
         conn.on('error', () => {
-          if (mounted) { setErrorMsg(t.errConnection); setPhase('error'); }
+          if (mountedRef.current) { setErrorMsg(t.errConnection); setPhase('error'); }
         });
       });
 
       peer.on('error', () => {
-        if (mounted) { setErrorMsg(t.errConnect); setPhase('error'); }
+        if (mountedRef.current) { setErrorMsg(t.errConnect); setPhase('error'); }
       });
     };
 
     init();
-    return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, phase]);
 
-  // Cleanup real só no unmount — separado para não destruir a conexão em mudanças de phase
+  // Cleanup real só no unmount
   useEffect(() => {
-    return () => { connRef.current?.close(); peerRef.current?.destroy(); };
+    return () => {
+      mountedRef.current = false;
+      connRef.current?.close();
+      peerRef.current?.destroy();
+    };
   }, []);
 
   const requestVote = () => {
