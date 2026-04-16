@@ -77,7 +77,7 @@ function Stepper({
     <div className="flex flex-col items-center gap-3">
       <span
         className="text-xs tracking-[0.3em] uppercase"
-        style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}
+        style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}
       >
         {label}
       </span>
@@ -86,8 +86,8 @@ function Stepper({
           onClick={() => onChange(Math.max(min, value - 1))}
           className="w-12 h-12 flex items-center justify-center border text-xl transition-all duration-150 active:scale-90"
           style={{
-            borderColor: '#1f1f1f',
-            color: value <= min ? '#333333' : '#888888',
+            borderColor: '#2e2e2e',
+            color: value <= min ? '#3a3a3a' : '#aaaaaa',
             background: '#111111',
           }}
           disabled={value <= min}
@@ -104,8 +104,8 @@ function Stepper({
           onClick={() => onChange(Math.min(max, value + 1))}
           className="w-12 h-12 flex items-center justify-center border text-xl transition-all duration-150 active:scale-90"
           style={{
-            borderColor: '#1f1f1f',
-            color: value >= max ? '#333333' : '#888888',
+            borderColor: '#2e2e2e',
+            color: value >= max ? '#3a3a3a' : '#aaaaaa',
             background: '#111111',
           }}
           disabled={value >= max}
@@ -192,7 +192,7 @@ export default function ConfigPage() {
     <>
       {showAbout && <AboutModal t={t} onClose={() => setShowAbout(false)} />}
 
-      <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ minHeight: '100%', background: '#080808' }}>
+      <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ height: '100%', background: '#080808' }}>
 
         {/* Núcleo vermelho no fundo */}
         <div
@@ -201,18 +201,21 @@ export default function ConfigPage() {
         />
 
         {/* Lang toggle */}
-        <div className="absolute top-6 right-6 flex items-center gap-1">
+        <div className="absolute top-6 right-6 flex items-center gap-0 z-20"
+          style={{ border: '1px solid #2a2a2a' }}>
           {(['pt', 'en'] as Lang[]).map((l, i) => (
             <Fragment key={l}>
               {i > 0 && (
-                <span className="text-xs" style={{ color: '#2a2a2a' }}>·</span>
+                <div style={{ width: '1px', background: '#2a2a2a', alignSelf: 'stretch' }} />
               )}
               <button
                 onClick={() => setLang(l)}
-                className="text-xs tracking-[0.2em] uppercase px-1 transition-all"
+                className="text-xs tracking-[0.2em] uppercase transition-all active:scale-95"
                 style={{
-                  color: lang === l ? '#b8860b' : '#333333',
+                  color: lang === l ? '#b8860b' : '#666666',
                   fontFamily: 'var(--font-inter)',
+                  padding: '0.35rem 0.6rem',
+                  background: lang === l ? '#1a1a1a' : 'transparent',
                 }}
               >
                 {l.toUpperCase()}
@@ -224,7 +227,7 @@ export default function ConfigPage() {
         {/* Vigneta que respira */}
         <div
           className="animate-vignette-breathe pointer-events-none fixed inset-0 z-10"
-          style={{ boxShadow: 'inset 0 0 180px 80px rgba(0,0,0,0.97)' }}
+          style={{ boxShadow: 'inset 0 0 120px 40px rgba(0,0,0,0.75)' }}
         />
 
         {/* Logo + Title */}
@@ -260,7 +263,7 @@ export default function ConfigPage() {
           >
             IMPOSTOR
           </h1>
-          <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#333333' }}>
+          <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#666666' }}>
             {t.tagline}
           </p>
         </div>
@@ -273,7 +276,7 @@ export default function ConfigPage() {
           style={{ animationDelay: '120ms' }}
         >
           <Stepper label={t.players} value={players} min={2} max={20} onChange={handlePlayersChange} />
-          <div className="w-full h-px" style={{ background: '#1f1f1f' }} />
+          <div className="w-full h-px" style={{ background: '#2e2e2e' }} />
           <Stepper label={t.impostors} value={impostors} min={1} max={players - 1} onChange={(v) => setImpostors(v)} />
         </div>
 
@@ -298,11 +301,11 @@ export default function ConfigPage() {
           <button
             onClick={() => router.push(`/criar?impostors=${impostors}&lang=${lang}`)}
             className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
-            style={{ background: 'transparent', color: '#555555', border: '1px solid #1f1f1f' }}
+            style={{ background: 'transparent', color: '#888888', border: '1px solid #333333' }}
           >
             {t.createRoom}
           </button>
-          <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#2a2a2a' }}>
+          <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#444444' }}>
             {t.summary(players, impostors)}
           </p>
         </div>
@@ -310,8 +313,13 @@ export default function ConfigPage() {
         {/* How to play */}
         <button
           onClick={() => setShowAbout(true)}
-          className="mt-8 text-xs tracking-[0.25em] uppercase transition-all active:scale-95"
-          style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}
+          className="mt-8 text-xs tracking-[0.25em] uppercase transition-all active:scale-95 z-20 relative"
+          style={{
+            color: '#888888',
+            fontFamily: 'var(--font-inter)',
+            borderBottom: '1px solid #333333',
+            paddingBottom: '0.2rem',
+          }}
         >
           {t.howToPlay}
         </button>
