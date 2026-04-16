@@ -7,6 +7,89 @@ import { QRCodeSVG } from 'qrcode.react';
 /* ── Utilities ───────────────────────────────────────────────── */
 const PEER_PREFIX = 'impostor-';
 
+type Lang = 'pt' | 'en';
+
+const T = {
+  pt: {
+    yourName: 'SEU NOME',
+    nameHint: 'Como você quer ser chamado?',
+    namePlaceholder: 'Digite seu nome',
+    createRoom: 'CRIAR SALA',
+    impostors: 'Impostores',
+    room: 'SALA',
+    copyLink: 'copiar link',
+    linkCopied: 'link copiado ✓',
+    players: 'Jogadores',
+    waitingPlayers: 'Aguardando jogadores...',
+    you: 'você',
+    host: 'host',
+    startGame: 'INICIAR JOGO',
+    youKnowTheWord: 'Você conhece a palavra',
+    youAreThe: 'Você é o',
+    impostor: 'IMPOSTOR',
+    pretend: 'Finja que sabe a palavra',
+    voting: 'Votação',
+    wantVote: (c: number, t: number) => `${c}/${t} querem votar`,
+    requestVote: 'pedir votação',
+    voteRequested: '✓ pedido',
+    votingTitle: 'VOTAÇÃO',
+    whoIsImpostor: 'Quem é o impostor?',
+    confirmVote: 'CONFIRMAR VOTO',
+    voteRegistered: 'Voto registrado',
+    voted: (c: number, t: number) => `${c}/${t} votaram`,
+    resultsTitle: 'RESULTADO',
+    eliminated: (name: string) => `${name} foi eliminado`,
+    revealImpostor: 'REVELAR IMPOSTOR',
+    waitingReveal: 'Aguardando o host revelar...',
+    wasImpostor: 'ERA O IMPOSTOR',
+    townWon: 'A cidade venceu',
+    wasInnocent: 'ERA INOCENTE',
+    impostorLoose: 'O impostor continua solto...',
+    newGame: 'NOVO JOGO',
+    vote: 'voto',
+    votes: 'votos',
+  },
+  en: {
+    yourName: 'YOUR NAME',
+    nameHint: 'What should we call you?',
+    namePlaceholder: 'Enter your name',
+    createRoom: 'CREATE ROOM',
+    impostors: 'Impostors',
+    room: 'ROOM',
+    copyLink: 'copy link',
+    linkCopied: 'link copied ✓',
+    players: 'Players',
+    waitingPlayers: 'Waiting for players...',
+    you: 'you',
+    host: 'host',
+    startGame: 'START GAME',
+    youKnowTheWord: 'You know the word',
+    youAreThe: 'You are the',
+    impostor: 'IMPOSTOR',
+    pretend: 'Pretend you know the word',
+    voting: 'Voting',
+    wantVote: (c: number, t: number) => `${c}/${t} want to vote`,
+    requestVote: 'request voting',
+    voteRequested: '✓ requested',
+    votingTitle: 'VOTING',
+    whoIsImpostor: 'Who is the impostor?',
+    confirmVote: 'CONFIRM VOTE',
+    voteRegistered: 'Vote registered',
+    voted: (c: number, t: number) => `${c}/${t} voted`,
+    resultsTitle: 'RESULTS',
+    eliminated: (name: string) => `${name} was eliminated`,
+    revealImpostor: 'REVEAL IMPOSTOR',
+    waitingReveal: 'Waiting for host to reveal...',
+    wasImpostor: 'WAS THE IMPOSTOR',
+    townWon: 'The town won',
+    wasInnocent: 'WAS INNOCENT',
+    impostorLoose: 'The impostor is still out there...',
+    newGame: 'NEW GAME',
+    vote: 'vote',
+    votes: 'votes',
+  },
+};
+
 function genCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   return Array.from({ length: 5 }, () =>
@@ -30,17 +113,17 @@ interface ConnectedPlayer { peerId: string; num: number; conn: any; name: string
 interface TallyEntry { num: number; count: number; isImpostor: boolean; name: string; }
 
 /* ── Naming screen ───────────────────────────────────────────── */
-function NamingScreen({ onConfirm }: { onConfirm: (name: string) => void }) {
+function NamingScreen({ onConfirm, t }: { onConfirm: (name: string) => void; t: typeof T['pt'] }) {
   const [value, setValue] = useState('');
   const submit = () => { const n = value.trim(); if (n) onConfirm(n); };
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-10">
       <div className="flex flex-col items-center gap-2">
         <h2 className="font-cinzel font-bold tracking-[0.3em] text-xl" style={{ color: '#b8860b' }}>
-          SEU NOME
+          {t.yourName}
         </h2>
         <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-          Como você quer ser chamado?
+          {t.nameHint}
         </p>
       </div>
       <input
@@ -50,7 +133,7 @@ function NamingScreen({ onConfirm }: { onConfirm: (name: string) => void }) {
         onKeyDown={e => e.key === 'Enter' && submit()}
         maxLength={20}
         autoFocus
-        placeholder="Digite seu nome"
+        placeholder={t.namePlaceholder}
         className="w-full max-w-xs text-center text-xl bg-transparent outline-none pb-2"
         style={{
           borderBottom: '1px solid #2a2a2a',
@@ -69,7 +152,7 @@ function NamingScreen({ onConfirm }: { onConfirm: (name: string) => void }) {
           border: `1px solid ${value.trim() ? '#c41e1e40' : '#1a1a1a'}`,
         }}
       >
-        CRIAR SALA
+        {t.createRoom}
       </button>
     </div>
   );
@@ -97,19 +180,19 @@ function Stepper({ label, value, min, max, onChange }: {
   );
 }
 
-function VoteRequestBanner({ requested, count, total, onRequest }: {
-  requested: boolean; count: number; total: number; onRequest: () => void;
+function VoteRequestBanner({ requested, count, total, onRequest, t }: {
+  requested: boolean; count: number; total: number; onRequest: () => void; t: typeof T['pt'];
 }) {
   return (
     <div className="fixed bottom-0 left-0 right-0 px-6 py-5 flex items-center justify-between"
       style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a' }}>
       <div>
         <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-          Votação
+          {t.voting}
         </p>
         {count > 0 && (
           <p className="text-xs mt-0.5" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-            {count}/{total} querem votar
+            {t.wantVote(count, total)}
           </p>
         )}
       </div>
@@ -120,13 +203,13 @@ function VoteRequestBanner({ requested, count, total, onRequest }: {
           color: requested ? '#c41e1e' : '#555555',
           border: `1px solid ${requested ? '#c41e1e30' : '#1f1f1f'}`,
         }}>
-        {requested ? '✓ pedido' : 'pedir votação'}
+        {requested ? t.voteRequested : t.requestVote}
       </button>
     </div>
   );
 }
 
-function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, total, onSelect, onConfirm }: {
+function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, total, onSelect, onConfirm, t }: {
   players: { num: number; name: string }[];
   myNum: number;
   selectedVote: number | null;
@@ -135,15 +218,16 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
   total: number;
   onSelect: (n: number) => void;
   onConfirm: () => void;
+  t: typeof T['pt'];
 }) {
   return (
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
         <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>
-          VOTAÇÃO
+          {t.votingTitle}
         </h2>
         <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-          Quem é o impostor?
+          {t.whoIsImpostor}
         </p>
       </div>
 
@@ -166,7 +250,7 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
               </span>
               <div className="flex items-center gap-3">
                 {isMe && (
-                  <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>você</span>
+                  <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>{t.you}</span>
                 )}
                 {isConfirmed && (
                   <span style={{ color: '#c41e1e' }}>✓</span>
@@ -184,10 +268,10 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
         {confirmedVote !== null ? (
           <div className="flex flex-col items-center gap-1 py-4">
             <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>
-              Voto registrado
+              {t.voteRegistered}
             </p>
             <p className="text-xs" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-              {voteCount}/{total} votaram
+              {t.voted(voteCount, total)}
             </p>
           </div>
         ) : (
@@ -198,7 +282,7 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
               color: selectedVote !== null ? '#f0ede6' : '#2a2a2a',
               border: `1px solid ${selectedVote !== null ? '#c41e1e40' : '#1a1a1a'}`,
             }}>
-            CONFIRMAR VOTO
+            {t.confirmVote}
           </button>
         )}
       </div>
@@ -206,11 +290,12 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
   );
 }
 
-function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
+function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
   tally: TallyEntry[];
   eliminatedNum: number;
   isHost: boolean;
   onReveal?: () => void;
+  t: typeof T['pt'];
 }) {
   const maxCount = Math.max(...tally.map(t => t.count), 1);
   const eliminatedName = tally.find(t => t.num === eliminatedNum)?.name ?? `Jogador ${eliminatedNum}`;
@@ -218,7 +303,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
         <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>
-          RESULTADO
+          {t.resultsTitle}
         </h2>
       </div>
 
@@ -231,7 +316,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
                 {entry.name}{entry.num === eliminatedNum && ' ←'}
               </span>
               <span className="text-xs font-cinzel" style={{ color: entry.num === eliminatedNum ? '#c41e1e' : '#333333' }}>
-                {entry.count} {entry.count === 1 ? 'voto' : 'votos'}
+                {entry.count} {entry.count === 1 ? t.vote : t.votes}
               </span>
             </div>
             <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
@@ -247,18 +332,18 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
 
       <div className="flex flex-col items-center gap-3 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
         <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-          {eliminatedName} foi eliminado
+          {t.eliminated(eliminatedName)}
         </p>
         {isHost && onReveal && (
           <button onClick={onReveal}
             className="w-full py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95"
             style={{ background: 'linear-gradient(135deg, #8b0000, #c41e1e)', color: '#f0ede6', border: '1px solid #c41e1e40' }}>
-            REVELAR IMPOSTOR
+            {t.revealImpostor}
           </button>
         )}
         {!isHost && (
           <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
-            Aguardando o host revelar...
+            {t.waitingReveal}
           </p>
         )}
       </div>
@@ -266,8 +351,8 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal }: {
   );
 }
 
-function RevealScreen({ eliminatedName, wasImpostor, onNewGame }: {
-  eliminatedName: string; wasImpostor: boolean; onNewGame: () => void;
+function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
+  eliminatedName: string; wasImpostor: boolean; onNewGame: () => void; t: typeof T['pt'];
 }) {
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-8 relative animate-scale-in">
@@ -278,10 +363,10 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame }: {
           </p>
           <h2 className="font-cinzel font-black text-center animate-blood-pulse"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#c41e1e', letterSpacing: '0.05em', lineHeight: 1.1 }}>
-            ERA O IMPOSTOR
+            {t.wasImpostor}
           </h2>
           <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e60', fontFamily: 'var(--font-inter)' }}>
-            A cidade venceu
+            {t.townWon}
           </p>
         </>
       ) : (
@@ -291,17 +376,17 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame }: {
           </p>
           <h2 className="font-cinzel font-bold text-center"
             style={{ fontSize: 'clamp(2rem, 10vw, 4rem)', color: '#888888', letterSpacing: '0.05em', lineHeight: 1.1 }}>
-            ERA INOCENTE
+            {t.wasInnocent}
           </h2>
           <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-            O impostor continua solto...
+            {t.impostorLoose}
           </p>
         </>
       )}
       <button onClick={onNewGame}
         className="absolute bottom-10 px-8 py-4 font-cinzel text-xs tracking-[0.3em] transition-all active:scale-95"
         style={{ border: '1px solid #1f1f1f', color: '#444444' }}>
-        NOVO JOGO
+        {t.newGame}
       </button>
     </div>
   );
@@ -311,6 +396,9 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame }: {
 export default function HostRoom() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  const lang = (searchParams.get('lang') ?? 'pt') as Lang;
+  const t = T[lang] ?? T.pt;
 
   const [phase, setPhase] = useState<Phase>('naming');
   const [hostName, setHostName] = useState('');
@@ -358,7 +446,7 @@ export default function HostRoom() {
       { num: 1, name: hostNameRef.current },
       ...current.map(p => ({ num: p.num, name: p.name })),
     ];
-    current.forEach(p => { try { p.conn.send({ type: 'lobby', players: list }); } catch {} });
+    current.forEach(p => { try { p.conn.send({ type: 'lobby', players: list, myNum: p.num }); } catch {} });
   }, []);
 
   const finalizeVotes = useCallback(() => {
@@ -369,8 +457,8 @@ export default function HostRoom() {
       tallyMap.set(targetNum, (tallyMap.get(targetNum) ?? 0) + 1);
     });
     if (confirmedVoteRef.current !== null) {
-      const t = confirmedVoteRef.current;
-      tallyMap.set(t, (tallyMap.get(t) ?? 0) + 1);
+      const tv = confirmedVoteRef.current;
+      tallyMap.set(tv, (tallyMap.get(tv) ?? 0) + 1);
     }
 
     const sorted: TallyEntry[] = Array.from(tallyMap.entries())
@@ -409,7 +497,8 @@ export default function HostRoom() {
       if (!mounted) return;
 
       setRoomCode(code);
-      setRoomUrl(`${window.location.origin}/sala/${code}`);
+      const langParam = lang !== 'pt' ? `?lang=${lang}` : '';
+      setRoomUrl(`${window.location.origin}/sala/${code}${langParam}`);
 
       const peer = new Peer(`${PEER_PREFIX}${code.toLowerCase()}`);
       peerRef.current = peer;
@@ -471,7 +560,8 @@ export default function HostRoom() {
       });
     };
 
-    fetch('/palavras.txt')
+    const wordFile = lang === 'en' ? '/words.txt' : '/palavras.txt';
+    fetch(wordFile)
       .then(r => r.text())
       .then(text => {
         const words = text.split('\n').map(w => w.trim()).filter(Boolean);
@@ -496,7 +586,7 @@ export default function HostRoom() {
       wakeLock?.release();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes]);
+  }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes, lang]);
 
   /* ── Game actions ────────────────────────────────────────────── */
   const startGame = useCallback(() => {
@@ -571,7 +661,7 @@ export default function HostRoom() {
   /* ── Render: Naming ── */
   if (phase === 'naming') {
     return (
-      <NamingScreen onConfirm={(name) => {
+      <NamingScreen t={t} onConfirm={(name) => {
         setHostName(name);
         hostNameRef.current = name;
         setPeerInit(true);
@@ -601,6 +691,7 @@ export default function HostRoom() {
         total={totalPlayers}
         onSelect={setSelectedVote}
         onConfirm={confirmVote}
+        t={t}
       />
     );
   }
@@ -613,6 +704,7 @@ export default function HostRoom() {
         eliminatedNum={eliminatedNum}
         isHost={true}
         onReveal={revealImpostor}
+        t={t}
       />
     );
   }
@@ -625,6 +717,7 @@ export default function HostRoom() {
         eliminatedName={eliminatedName}
         wasImpostor={wasImpostor}
         onNewGame={() => router.push('/')}
+        t={t}
       />
     );
   }
@@ -636,7 +729,7 @@ export default function HostRoom() {
         {myRole.role === 'innocent' ? (
           <div className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in">
             <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-              Você conhece a palavra
+              {t.youKnowTheWord}
             </p>
             <div className="w-20 h-px" style={{ background: 'linear-gradient(90deg, transparent, #1f1f1f, transparent)' }} />
             <p className="font-cinzel font-bold text-center leading-tight"
@@ -648,15 +741,15 @@ export default function HostRoom() {
           <>
             <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
               <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
-                Você é o
+                {t.youAreThe}
               </p>
               <h2 className="font-cinzel font-black animate-blood-pulse animate-flicker"
                 style={{ fontSize: 'clamp(2.8rem, 13vw, 5.5rem)', color: '#c41e1e', letterSpacing: '0.06em', lineHeight: 1 }}>
-                IMPOSTOR
+                {t.impostor}
               </h2>
               <div className="w-32 h-px" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e40, transparent)' }} />
               <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>
-                Finja que sabe a palavra
+                {t.pretend}
               </p>
             </div>
           </>
@@ -666,6 +759,7 @@ export default function HostRoom() {
           count={voteRequestCount}
           total={totalPlayers}
           onRequest={requestVote}
+          t={t}
         />
       </div>
     );
@@ -680,7 +774,7 @@ export default function HostRoom() {
             <path d="M19 12H5M12 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="font-cinzel font-bold tracking-[0.3em] text-sm" style={{ color: '#b8860b' }}>SALA</h1>
+        <h1 className="font-cinzel font-bold tracking-[0.3em] text-sm" style={{ color: '#b8860b' }}>{t.room}</h1>
         <span className="font-cinzel font-bold text-xl" style={{ color: '#f0ede6' }}>{roomCode}</span>
       </div>
 
@@ -691,19 +785,19 @@ export default function HostRoom() {
         <button onClick={copyLink}
           className="text-xs tracking-[0.25em] uppercase transition-all active:scale-95"
           style={{ color: copied ? '#b8860b' : '#444444', fontFamily: 'var(--font-inter)' }}>
-          {copied ? 'link copiado ✓' : 'copiar link'}
+          {copied ? t.linkCopied : t.copyLink}
         </button>
       </div>
 
       <div className="flex flex-col gap-0">
         <p className="text-xs tracking-[0.3em] uppercase mb-3" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>
-          Jogadores ({totalInLobby})
+          {t.players} ({totalInLobby})
         </p>
         <div className="flex items-center justify-between py-3 px-4" style={{ borderBottom: '1px solid #1a1a1a' }}>
           <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>{hostName}</span>
           <div className="flex gap-2">
-            <span className="text-xs tracking-widest uppercase" style={{ color: '#b8860b', fontFamily: 'var(--font-inter)' }}>você</span>
-            <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>host</span>
+            <span className="text-xs tracking-widest uppercase" style={{ color: '#b8860b', fontFamily: 'var(--font-inter)' }}>{t.you}</span>
+            <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>{t.host}</span>
           </div>
         </div>
         {players.map(p => (
@@ -715,13 +809,13 @@ export default function HostRoom() {
         ))}
         {totalInLobby < 2 && (
           <p className="text-xs text-center mt-3" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
-            Aguardando jogadores...
+            {t.waitingPlayers}
           </p>
         )}
       </div>
 
       <div className="py-4 px-4" style={{ border: '1px solid #1a1a1a' }}>
-        <Stepper label="Impostores" value={impostors} min={1} max={Math.max(1, totalInLobby - 1)} onChange={setImpostors} />
+        <Stepper label={t.impostors} value={impostors} min={1} max={Math.max(1, totalInLobby - 1)} onChange={setImpostors} />
       </div>
 
       <button onClick={startGame} disabled={totalInLobby < 2}
@@ -731,7 +825,7 @@ export default function HostRoom() {
           color: totalInLobby >= 2 ? '#f0ede6' : '#2a2a2a',
           border: `1px solid ${totalInLobby >= 2 ? '#c41e1e40' : '#1a1a1a'}`,
         }}>
-        INICIAR JOGO
+        {t.startGame}
       </button>
     </div>
   );

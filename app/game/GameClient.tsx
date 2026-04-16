@@ -4,11 +4,45 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 type Phase = 'idle' | 'revealed' | 'finished';
+type Lang = 'pt' | 'en';
 
 interface Player {
   id: number;
   isImpostor: boolean;
 }
+
+const T = {
+  pt: {
+    turnOf: 'vez de',
+    player: 'JOGADOR',
+    tapToSee: 'Toque para ver',
+    yourRole: 'sua missão',
+    youKnowTheWord: 'Você conhece a palavra',
+    tapToContinue: 'toque para continuar',
+    youAreThe: 'Você é o',
+    pretend: 'Finja que sabe a palavra',
+    impostor: 'IMPOSTOR',
+    allReady: 'TODOS PRONTOS',
+    goodLuck: 'Boa sorte.',
+    trustNoOne: 'Não confie em ninguém.',
+    newGame: 'NOVO JOGO',
+  },
+  en: {
+    turnOf: 'player',
+    player: 'PLAYER',
+    tapToSee: 'Tap to see',
+    yourRole: 'your role',
+    youKnowTheWord: 'You know the word',
+    tapToContinue: 'tap to continue',
+    youAreThe: 'You are the',
+    pretend: 'Pretend you know the word',
+    impostor: 'IMPOSTOR',
+    allReady: 'ALL READY',
+    goodLuck: 'Good luck.',
+    trustNoOne: 'Trust no one.',
+    newGame: 'NEW GAME',
+  },
+};
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -43,20 +77,20 @@ function EyeClosed() {
 }
 
 /* ── Idle screen ─────────────────────────────────────────────── */
-function IdleScreen({ playerNumber }: { playerNumber: number }) {
+function IdleScreen({ playerNumber, t }: { playerNumber: number; t: typeof T['pt'] }) {
   return (
     <div className="flex flex-col items-center justify-center gap-10 animate-fade-in">
       <p
         className="text-xs tracking-[0.35em] uppercase"
         style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}
       >
-        vez de
+        {t.turnOf}
       </p>
       <h2
         className="font-cinzel font-bold tracking-[0.3em] text-4xl"
         style={{ color: '#b8860b' }}
       >
-        JOGADOR {playerNumber}
+        {t.player} {playerNumber}
       </h2>
       <div
         className="w-24 h-px"
@@ -65,10 +99,10 @@ function IdleScreen({ playerNumber }: { playerNumber: number }) {
       <EyeClosed />
       <div className="flex flex-col items-center gap-2" style={{ color: '#444444' }}>
         <p className="text-sm tracking-[0.2em] uppercase" style={{ fontFamily: 'var(--font-inter)' }}>
-          Toque para ver
+          {t.tapToSee}
         </p>
         <p className="text-sm tracking-[0.2em] uppercase" style={{ fontFamily: 'var(--font-inter)' }}>
-          sua missão
+          {t.yourRole}
         </p>
       </div>
     </div>
@@ -76,14 +110,14 @@ function IdleScreen({ playerNumber }: { playerNumber: number }) {
 }
 
 /* ── Innocent screen ─────────────────────────────────────────── */
-function InnocentScreen({ word, canContinue }: { word: string; canContinue: boolean }) {
+function InnocentScreen({ word, canContinue, t }: { word: string; canContinue: boolean; t: typeof T['pt'] }) {
   return (
     <div className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in">
       <p
         className="text-xs tracking-[0.3em] uppercase"
         style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}
       >
-        Você conhece a palavra
+        {t.youKnowTheWord}
       </p>
       <div
         className="w-20 h-px"
@@ -106,14 +140,14 @@ function InnocentScreen({ word, canContinue }: { word: string; canContinue: bool
         }`}
         style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}
       >
-        toque para continuar
+        {t.tapToContinue}
       </div>
     </div>
   );
 }
 
 /* ── Impostor screen ─────────────────────────────────────────── */
-function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
+function ImpostorScreen({ canContinue, t }: { canContinue: boolean; t: typeof T['pt'] }) {
   return (
     <>
       <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
@@ -121,7 +155,7 @@ function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
           className="text-xs tracking-[0.35em] uppercase"
           style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}
         >
-          Você é o
+          {t.youAreThe}
         </p>
         <h2
           className="font-cinzel font-black animate-blood-pulse animate-flicker"
@@ -132,7 +166,7 @@ function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
             lineHeight: 1,
           }}
         >
-          IMPOSTOR
+          {t.impostor}
         </h2>
         <div
           className="w-32 h-px"
@@ -142,7 +176,7 @@ function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
           className="text-xs tracking-[0.2em] uppercase mt-1"
           style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}
         >
-          Finja que sabe a palavra
+          {t.pretend}
         </p>
         <div
           className={`fixed bottom-10 text-xs tracking-[0.25em] uppercase transition-opacity duration-500 ${
@@ -150,7 +184,7 @@ function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
           }`}
           style={{ color: '#c41e1e80', fontFamily: 'var(--font-inter)' }}
         >
-          toque para continuar
+          {t.tapToContinue}
         </div>
       </div>
     </>
@@ -158,14 +192,14 @@ function ImpostorScreen({ canContinue }: { canContinue: boolean }) {
 }
 
 /* ── Finished screen ─────────────────────────────────────────── */
-function FinishedScreen({ onRestart }: { onRestart: () => void }) {
+function FinishedScreen({ onRestart, t }: { onRestart: () => void; t: typeof T['pt'] }) {
   return (
     <div className="flex flex-col items-center justify-center gap-8 px-8 animate-fade-up">
       <h2
         className="font-cinzel font-bold tracking-[0.3em] text-center"
         style={{ fontSize: '2rem', color: '#b8860b' }}
       >
-        TODOS PRONTOS
+        {t.allReady}
       </h2>
       <div
         className="w-24 h-px"
@@ -176,13 +210,13 @@ function FinishedScreen({ onRestart }: { onRestart: () => void }) {
           className="text-base tracking-widest"
           style={{ fontFamily: 'var(--font-inter)' }}
         >
-          Boa sorte.
+          {t.goodLuck}
         </p>
         <p
           className="text-sm tracking-wider"
           style={{ fontFamily: 'var(--font-inter)', color: '#3a3a3a' }}
         >
-          Não confie em ninguém.
+          {t.trustNoOne}
         </p>
       </div>
       <button
@@ -194,7 +228,7 @@ function FinishedScreen({ onRestart }: { onRestart: () => void }) {
           background: '#111111',
         }}
       >
-        NOVO JOGO
+        {t.newGame}
       </button>
     </div>
   );
@@ -207,6 +241,8 @@ export default function GameClient() {
 
   const totalPlayers = parseInt(params.get('players') ?? '4');
   const totalImpostors = parseInt(params.get('impostors') ?? '1');
+  const lang = (params.get('lang') ?? 'pt') as Lang;
+  const t = T[lang] ?? T.pt;
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [word, setWord] = useState('');
@@ -227,7 +263,8 @@ export default function GameClient() {
   /* Initialise game data */
   useEffect(() => {
     const init = async () => {
-      const res = await fetch('/palavras.txt');
+      const wordFile = lang === 'en' ? '/words.txt' : '/palavras.txt';
+      const res = await fetch(wordFile);
       const text = await res.text();
       const words = text.split('\n').map((w) => w.trim()).filter(Boolean);
       const chosen = words[Math.floor(Math.random() * words.length)];
@@ -241,13 +278,12 @@ export default function GameClient() {
       const shuffled = shuffle(roles);
       for (let i = 0; i < totalImpostors; i++) shuffled[i].isImpostor = true;
 
-      /* Re-sort by id so player 1 goes first */
       const final = shuffle(shuffled).map((p, idx) => ({ ...p, id: idx + 1 }));
       setPlayers(final);
       setLoading(false);
     };
     init();
-  }, [totalPlayers, totalImpostors]);
+  }, [totalPlayers, totalImpostors, lang]);
 
   /* Enable "tap to continue" after 1.5 s when a role is revealed */
   useEffect(() => {
@@ -296,19 +332,19 @@ export default function GameClient() {
       onClick={isFinished ? undefined : handleTap}
     >
       {phase === 'idle' && (
-        <IdleScreen playerNumber={players[currentIndex]?.id ?? currentIndex + 1} />
+        <IdleScreen playerNumber={players[currentIndex]?.id ?? currentIndex + 1} t={t} />
       )}
 
       {phase === 'revealed' && !players[currentIndex]?.isImpostor && (
-        <InnocentScreen word={word} canContinue={canContinue} />
+        <InnocentScreen word={word} canContinue={canContinue} t={t} />
       )}
 
       {phase === 'revealed' && players[currentIndex]?.isImpostor && (
-        <ImpostorScreen canContinue={canContinue} />
+        <ImpostorScreen canContinue={canContinue} t={t} />
       )}
 
       {phase === 'finished' && (
-        <FinishedScreen onRestart={() => router.push('/')} />
+        <FinishedScreen onRestart={() => router.push('/')} t={t} />
       )}
 
       {/* Progress dots */}

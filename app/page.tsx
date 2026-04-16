@@ -3,6 +3,29 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+type Lang = 'pt' | 'en';
+
+const T = {
+  pt: {
+    tagline: 'Não confie em ninguém',
+    players: 'Jogadores',
+    impostors: 'Impostores',
+    quickGame: 'JOGO RÁPIDO',
+    createRoom: 'CRIAR SALA',
+    summary: (p: number, i: number) =>
+      `${p} jogadores · ${i} impostor${i > 1 ? 'es' : ''}`,
+  },
+  en: {
+    tagline: 'Trust no one',
+    players: 'Players',
+    impostors: 'Impostors',
+    quickGame: 'QUICK GAME',
+    createRoom: 'CREATE ROOM',
+    summary: (p: number, i: number) =>
+      `${p} players · ${i} impostor${i > 1 ? 's' : ''}`,
+  },
+};
+
 function Stepper({
   label,
   value,
@@ -64,22 +87,43 @@ export default function ConfigPage() {
   const router = useRouter();
   const [players, setPlayers] = useState(4);
   const [impostors, setImpostors] = useState(1);
+  const [lang, setLang] = useState<Lang>('pt');
+
+  const t = T[lang];
 
   const handlePlayersChange = (v: number) => {
     setPlayers(v);
     if (impostors >= v) setImpostors(v - 1);
   };
 
-  const handleImpostorsChange = (v: number) => {
-    setImpostors(v);
-  };
-
   const start = () => {
-    router.push(`/game?players=${players}&impostors=${impostors}`);
+    router.push(`/game?players=${players}&impostors=${impostors}&lang=${lang}`);
   };
 
   return (
     <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ minHeight: '100%' }}>
+
+      {/* Lang toggle */}
+      <div className="absolute top-6 right-6 flex items-center gap-1">
+        {(['pt', 'en'] as Lang[]).map((l, i) => (
+          <>
+            {i > 0 && (
+              <span key={`sep-${l}`} className="text-xs" style={{ color: '#2a2a2a' }}>·</span>
+            )}
+            <button
+              key={l}
+              onClick={() => setLang(l)}
+              className="text-xs tracking-[0.2em] uppercase px-1 transition-all"
+              style={{
+                color: lang === l ? '#b8860b' : '#333333',
+                fontFamily: 'var(--font-inter)',
+              }}
+            >
+              {l.toUpperCase()}
+            </button>
+          </>
+        ))}
+      </div>
 
       {/* Logo + Title */}
       <div className="flex flex-col items-center gap-1 animate-fade-up" style={{ animationDelay: '0ms' }}>
@@ -97,11 +141,10 @@ export default function ConfigPage() {
           IMPOSTOR
         </h1>
         <p className="mt-2 text-xs tracking-[0.2em] uppercase" style={{ color: '#444444' }}>
-          Não confie em ninguém
+          {t.tagline}
         </p>
       </div>
 
-      {/* Espaçador flexível — colapsa em telas pequenas */}
       <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
 
       {/* Steppers */}
@@ -109,12 +152,11 @@ export default function ConfigPage() {
         className="flex flex-col gap-10 w-full max-w-xs animate-fade-up"
         style={{ animationDelay: '120ms' }}
       >
-        <Stepper label="Jogadores" value={players} min={2} max={20} onChange={handlePlayersChange} />
+        <Stepper label={t.players} value={players} min={2} max={20} onChange={handlePlayersChange} />
         <div className="w-full h-px" style={{ background: '#1f1f1f' }} />
-        <Stepper label="Impostores" value={impostors} min={1} max={players - 1} onChange={handleImpostorsChange} />
+        <Stepper label={t.impostors} value={impostors} min={1} max={players - 1} onChange={(v) => setImpostors(v)} />
       </div>
 
-      {/* Espaçador flexível */}
       <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
 
       {/* CTA */}
@@ -131,17 +173,17 @@ export default function ConfigPage() {
             border: '1px solid #c41e1e40',
           }}
         >
-          JOGO RÁPIDO
+          {t.quickGame}
         </button>
         <button
-          onClick={() => router.push(`/criar?impostors=${impostors}`)}
+          onClick={() => router.push(`/criar?impostors=${impostors}&lang=${lang}`)}
           className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
           style={{ background: 'transparent', color: '#555555', border: '1px solid #1f1f1f' }}
         >
-          CRIAR SALA
+          {t.createRoom}
         </button>
         <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#2a2a2a' }}>
-          {players} jogadores · {impostors} impostor{impostors > 1 ? 'es' : ''}
+          {t.summary(players, impostors)}
         </p>
       </div>
 
