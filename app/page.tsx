@@ -311,7 +311,7 @@ export default function ConfigPage() {
         <button
           onClick={() => setShowAbout(true)}
           className="mt-8 text-xs tracking-[0.25em] uppercase transition-all active:scale-95"
-          style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}
+          style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}
         >
           {t.howToPlay}
         </button>
