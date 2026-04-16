@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 
-/* ── Utilities ───────────────────────────────────────────────── */
 const PEER_PREFIX = 'impostor-';
+const RECONNECT_WINDOW_MS = 60_000;
+const TIME_OPTIONS = [0, 120, 180, 300]; // seconds (0 = no limit)
 
 type Lang = 'pt' | 'en';
 
@@ -16,6 +17,9 @@ const T = {
     namePlaceholder: 'Digite seu nome',
     createRoom: 'CRIAR SALA',
     impostors: 'Impostores',
+    timerLabel: 'Tempo por rodada',
+    noTimer: 'sem limite',
+    timer: (s: number) => `${s / 60} min`,
     room: 'SALA',
     copyLink: 'copiar link',
     linkCopied: 'link copiado ✓',
@@ -23,6 +27,7 @@ const T = {
     waitingPlayers: 'Aguardando jogadores...',
     you: 'você',
     host: 'host',
+    disconnected: 'desconectado',
     startGame: 'INICIAR JOGO',
     youKnowTheWord: 'Você conhece a palavra',
     youAreThe: 'Você é o',
@@ -57,6 +62,9 @@ const T = {
     namePlaceholder: 'Enter your name',
     createRoom: 'CREATE ROOM',
     impostors: 'Impostors',
+    timerLabel: 'Round time',
+    noTimer: 'no limit',
+    timer: (s: number) => `${s / 60} min`,
     room: 'ROOM',
     copyLink: 'copy link',
     linkCopied: 'link copied ✓',
@@ -64,6 +72,7 @@ const T = {
     waitingPlayers: 'Waiting for players...',
     you: 'you',
     host: 'host',
+    disconnected: 'disconnected',
     startGame: 'START GAME',
     youKnowTheWord: 'You know the word',
     youAreThe: 'You are the',
@@ -110,11 +119,52 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/* ── Types ───────────────────────────────────────────────────── */
 type Phase = 'naming' | 'loading' | 'lobby' | 'role' | 'voting' | 'results' | 'reveal';
 
-interface ConnectedPlayer { peerId: string; num: number; conn: any; name: string; }
+interface ConnectedPlayer {
+  peerId: string;
+  num: number;
+  conn: any;
+  name: string;
+  sessionId?: string;
+  disconnected?: boolean;
+}
 interface TallyEntry { num: number; count: number; isImpostor: boolean; name: string; }
+
+/* ── Timer bar ───────────────────────────────────────────────── */
+function TimerBar({ duration, onExpire }: { duration: number; onExpire: () => void }) {
+  const [remaining, setRemaining] = useState(duration);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
+
+  useEffect(() => {
+    if (duration === 0) return;
+    const interval = setInterval(() => {
+      setRemaining(r => {
+        if (r <= 1) { clearInterval(interval); onExpireRef.current(); return 0; }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [duration]);
+
+  if (duration === 0) return null;
+
+  const pct = (remaining / duration) * 100;
+  const isLow = pct < 25;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-40" style={{ height: '2px', background: '#111111' }}>
+      <div style={{
+        height: '100%',
+        width: `${pct}%`,
+        background: isLow ? '#c41e1e' : '#2a2a2a',
+        transition: 'width 1s linear, background 0.5s ease',
+        boxShadow: isLow ? '0 0 6px #c41e1e80' : 'none',
+      }} />
+    </div>
+  );
+}
 
 /* ── Naming screen ───────────────────────────────────────────── */
 function NamingScreen({ onConfirm, t }: { onConfirm: (name: string) => void; t: typeof T['pt'] }) {
@@ -184,6 +234,27 @@ function Stepper({ label, value, min, max, onChange }: {
   );
 }
 
+function TimeSelector({ value, onChange, t }: { value: number; onChange: (v: number) => void; t: typeof T['pt'] }) {
+  const idx = TIME_OPTIONS.indexOf(value);
+  const label = value === 0 ? t.noTimer : t.timer(value);
+  return (
+    <div className="flex items-center justify-between w-full">
+      <span className="text-xs tracking-[0.3em] uppercase" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
+        {t.timerLabel}
+      </span>
+      <div className="flex items-center gap-4">
+        <button onClick={() => onChange(TIME_OPTIONS[Math.max(0, idx - 1)])} disabled={idx <= 0}
+          className="w-10 h-10 flex items-center justify-center border text-lg transition-all active:scale-90"
+          style={{ borderColor: '#1f1f1f', color: idx <= 0 ? '#2a2a2a' : '#888888', background: '#111111' }}>−</button>
+        <span className="font-cinzel text-sm w-14 text-center" style={{ color: '#b8860b' }}>{label}</span>
+        <button onClick={() => onChange(TIME_OPTIONS[Math.min(TIME_OPTIONS.length - 1, idx + 1)])} disabled={idx >= TIME_OPTIONS.length - 1}
+          className="w-10 h-10 flex items-center justify-center border text-lg transition-all active:scale-90"
+          style={{ borderColor: '#1f1f1f', color: idx >= TIME_OPTIONS.length - 1 ? '#2a2a2a' : '#888888', background: '#111111' }}>+</button>
+      </div>
+    </div>
+  );
+}
+
 function VoteRequestBanner({ requested, count, total, onRequest, t }: {
   requested: boolean; count: number; total: number; onRequest: () => void; t: typeof T['pt'];
 }) {
@@ -245,23 +316,14 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
             <button key={p.num} onClick={() => !confirmed && onSelect(p.num)}
               disabled={confirmed}
               className="flex items-center justify-between py-4 px-4 transition-all active:scale-[0.98]"
-              style={{
-                borderBottom: '1px solid #1a1a1a',
-                background: isSelected ? '#1a0000' : 'transparent',
-              }}>
+              style={{ borderBottom: '1px solid #1a1a1a', background: isSelected ? '#1a0000' : 'transparent' }}>
               <span className="text-sm" style={{ color: isSelected ? '#f0ede6' : '#555555', fontFamily: 'var(--font-inter)' }}>
                 {p.name}
               </span>
               <div className="flex items-center gap-3">
-                {isMe && (
-                  <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>{t.you}</span>
-                )}
-                {isConfirmed && (
-                  <span style={{ color: '#c41e1e' }}>✓</span>
-                )}
-                {isSelected && !confirmed && (
-                  <div className="w-2 h-2 rounded-full" style={{ background: '#c41e1e' }} />
-                )}
+                {isMe && <span className="text-xs tracking-widest uppercase" style={{ color: '#444444', fontFamily: 'var(--font-inter)' }}>{t.you}</span>}
+                {isConfirmed && <span style={{ color: '#c41e1e' }}>✓</span>}
+                {isSelected && !confirmed && <div className="w-2 h-2 rounded-full" style={{ background: '#c41e1e' }} />}
               </div>
             </button>
           );
@@ -271,12 +333,8 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
       <div className="flex flex-col gap-3">
         {confirmedVote !== null ? (
           <div className="flex flex-col items-center gap-1 py-4">
-            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>
-              {t.voteRegistered}
-            </p>
-            <p className="text-xs" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-              {t.voted(voteCount, total)}
-            </p>
+            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>{t.voteRegistered}</p>
+            <p className="text-xs" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>{t.voted(voteCount, total)}</p>
           </div>
         ) : (
           <button onClick={onConfirm} disabled={selectedVote === null}
@@ -306,11 +364,8 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
   return (
     <div className="grain h-full flex flex-col px-6 py-10 gap-6">
       <div className="flex flex-col items-center gap-1">
-        <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>
-          {t.resultsTitle}
-        </h2>
+        <h2 className="font-cinzel font-bold tracking-[0.4em] text-xl" style={{ color: '#b8860b' }}>{t.resultsTitle}</h2>
       </div>
-
       <div className="flex flex-col gap-3 flex-1">
         {tally.map(entry => (
           <div key={entry.num} className="flex flex-col gap-1.5">
@@ -325,19 +380,13 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
             </div>
             <div className="h-px w-full" style={{ background: '#1a1a1a' }}>
               <div className="h-px transition-all duration-700"
-                style={{
-                  width: `${(entry.count / maxCount) * 100}%`,
-                  background: entry.num === eliminatedNum ? '#c41e1e' : '#2a2a2a',
-                }} />
+                style={{ width: `${(entry.count / maxCount) * 100}%`, background: entry.num === eliminatedNum ? '#c41e1e' : '#2a2a2a' }} />
             </div>
           </div>
         ))}
       </div>
-
       <div className="flex flex-col items-center gap-3 py-4" style={{ borderTop: '1px solid #1a1a1a' }}>
-        <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
-          {t.eliminated(eliminatedName)}
-        </p>
+        <p className="text-xs text-center" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>{t.eliminated(eliminatedName)}</p>
         {isHost && onReveal && (
           <button onClick={onReveal}
             className="w-full py-4 font-cinzel font-bold tracking-[0.3em] text-sm transition-all active:scale-95"
@@ -346,9 +395,7 @@ function ResultsScreen({ tally, eliminatedNum, isHost, onReveal, t }: {
           </button>
         )}
         {!isHost && (
-          <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>
-            {t.waitingReveal}
-          </p>
+          <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#2a2a2a', fontFamily: 'var(--font-inter)' }}>{t.waitingReveal}</p>
         )}
       </div>
     </div>
@@ -366,37 +413,25 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
       )}
       {wasImpostor ? (
         <>
-          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
-            style={{ color: '#c41e1e50', animationDelay: '0ms' }}>
-            {eliminatedName}
-          </p>
-          <div className="w-16 h-px animate-stagger-in"
-            style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
           <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
             style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasImpostor}
           </h2>
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
-            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
-            {t.townWon}
-          </p>
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.townWon}</p>
         </>
       ) : (
         <>
-          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
-            style={{ color: '#2a2a2a', animationDelay: '0ms' }}>
-            {eliminatedName}
-          </p>
-          <div className="w-16 h-px animate-stagger-in"
-            style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#2a2a2a', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <div className="w-16 h-px animate-stagger-in" style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
           <h2 className="font-cinzel font-bold text-center animate-stagger-in"
             style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#444444', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasInnocent}
           </h2>
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
-            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
-            {t.impostorLoose}
-          </p>
+            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.impostorLoose}</p>
         </>
       )}
       <button onClick={onNewGame}
@@ -409,19 +444,22 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
 }
 
 /* ── Host role screen ────────────────────────────────────────── */
-function HostRoleScreen({ myRole, voteRequestCount, totalPlayers, hasRequestedVote, onRequestVote, t }: {
+function HostRoleScreen({ myRole, voteRequestCount, totalPlayers, hasRequestedVote, onRequestVote, timerDuration, t }: {
   myRole: { role: 'innocent' | 'impostor'; word: string };
   voteRequestCount: number;
   totalPlayers: number;
   hasRequestedVote: boolean;
   onRequestVote: () => void;
+  timerDuration: number;
   t: typeof T['pt'];
 }) {
   const [revealed, setRevealed] = useState(false);
   const isImpostor = myRole.role === 'impostor';
+  const handleExpire = useCallback(() => onRequestVote(), [onRequestVote]);
 
   return (
     <div className="grain h-full flex items-center justify-center relative pb-20">
+      <TimerBar duration={timerDuration} onExpire={handleExpire} />
       <button
         onClick={() => setRevealed(r => !r)}
         className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in w-full relative"
@@ -430,23 +468,17 @@ function HostRoleScreen({ myRole, voteRequestCount, totalPlayers, hasRequestedVo
         <div style={{ opacity: revealed ? 1 : 0, transition: 'opacity 0.3s ease', pointerEvents: 'none', userSelect: 'none' }}>
           {isImpostor ? (
             <div className="flex flex-col items-center gap-6">
-              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
-                {t.youAreThe}
-              </p>
+              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>{t.youAreThe}</p>
               <h2 className="font-cinzel font-black animate-blood-pulse animate-flicker"
                 style={{ fontSize: 'clamp(2.8rem, 13vw, 5.5rem)', color: '#c41e1e', letterSpacing: '0.06em', lineHeight: 1 }}>
                 {t.impostor}
               </h2>
               <div className="w-32 h-px" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e40, transparent)' }} />
-              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>
-                {t.pretend}
-              </p>
+              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>{t.pretend}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-8">
-              <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-                {t.youKnowTheWord}
-              </p>
+              <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>{t.youKnowTheWord}</p>
               <div className="w-20 h-px" style={{ background: 'linear-gradient(90deg, transparent, #1f1f1f, transparent)' }} />
               <p className="font-cinzel font-bold text-center leading-tight"
                 style={{ fontSize: 'clamp(2.5rem, 12vw, 5rem)', color: '#f0ede6', letterSpacing: '0.05em', wordBreak: 'break-word' }}>
@@ -455,28 +487,18 @@ function HostRoleScreen({ myRole, voteRequestCount, totalPlayers, hasRequestedVo
             </div>
           )}
         </div>
-
         {!revealed && (
-          <p className="absolute text-xs tracking-[0.3em] uppercase"
-            style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          <p className="absolute text-xs tracking-[0.3em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
             {t.tapToReveal}
           </p>
         )}
         {revealed && (
-          <p className="absolute bottom-[-2rem] text-xs tracking-[0.25em] uppercase"
-            style={{ color: '#222222', fontFamily: 'var(--font-inter)' }}>
+          <p className="absolute bottom-[-2rem] text-xs tracking-[0.25em] uppercase" style={{ color: '#222222', fontFamily: 'var(--font-inter)' }}>
             {t.tapToHide}
           </p>
         )}
       </button>
-
-      <VoteRequestBanner
-        requested={hasRequestedVote}
-        count={voteRequestCount}
-        total={totalPlayers}
-        onRequest={onRequestVote}
-        t={t}
-      />
+      <VoteRequestBanner requested={hasRequestedVote} count={voteRequestCount} total={totalPlayers} onRequest={onRequestVote} t={t} />
     </div>
   );
 }
@@ -495,15 +517,17 @@ export default function HostRoom() {
   useEffect(() => {
     if (['role', 'voting', 'results', 'reveal'].includes(phase)) {
       setPhaseFlash(true);
-      const t = setTimeout(() => setPhaseFlash(false), 550);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setPhaseFlash(false), 550);
+      return () => clearTimeout(timer);
     }
   }, [phase]);
+
   const [hostName, setHostName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [roomUrl, setRoomUrl] = useState('');
   const [players, setPlayers] = useState<ConnectedPlayer[]>([]);
   const [impostors, setImpostors] = useState(parseInt(searchParams.get('impostors') ?? '1'));
+  const [roundDuration, setRoundDuration] = useState(0);
   const [myRole, setMyRole] = useState<{ role: 'innocent' | 'impostor'; word: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [peerInit, setPeerInit] = useState(false);
@@ -520,7 +544,7 @@ export default function HostRoom() {
   const [eliminatedNum, setEliminatedNum] = useState<number | null>(null);
   const [eliminatedName, setEliminatedName] = useState<string | null>(null);
 
-  // Refs (safe to read inside PeerJS callbacks)
+  // Refs
   const peerRef = useRef<any>(null);
   const playersRef = useRef<ConnectedPlayer[]>([]);
   const counterRef = useRef(2);
@@ -533,24 +557,69 @@ export default function HostRoom() {
   const confirmedVoteRef = useRef<number | null>(null);
   const totalPlayersRef = useRef(0);
   const allPlayersRef = useRef<{ num: number; name: string }[]>([]);
+  // Reconnection refs
+  const gamePhaseRef = useRef<Phase>('naming');
+  const playerRolesRef = useRef<Map<string, { role: 'innocent' | 'impostor'; word: string }>>(new Map());
+  const disconnectedSessionsRef = useRef<Map<string, { player: ConnectedPlayer; role: { role: 'innocent' | 'impostor'; word: string }; timer: ReturnType<typeof setTimeout> }>>(new Map());
+  const tallyRef = useRef<TallyEntry[]>([]);
+  const eliminatedNumRef = useRef<number | null>(null);
+  const revealStateRef = useRef<{ eliminatedName: string; wasImpostor: boolean } | null>(null);
+  const roundDurationRef = useRef(0);
 
-  /* ── Stable helpers (only use refs internally) ─────────────── */
+  // Keep gamePhaseRef in sync
+  useEffect(() => { gamePhaseRef.current = phase; }, [phase]);
+
+  // Warn host before leaving during active game
+  useEffect(() => {
+    const active = ['lobby', 'role', 'voting', 'results', 'reveal'].includes(phase);
+    if (!active) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [phase]);
+
+  /* ── Stable helpers ──────────────────────────────────────────── */
   const broadcastAll = useCallback((msg: any) => {
-    playersRef.current.forEach(p => { try { p.conn.send(msg); } catch {} });
+    playersRef.current.filter(p => !p.disconnected).forEach(p => { try { p.conn.send(msg); } catch {} });
   }, []);
 
   const broadcastLobby = useCallback((current: ConnectedPlayer[]) => {
+    const active = current.filter(p => !p.disconnected);
     const list = [
       { num: 1, name: hostNameRef.current },
-      ...current.map(p => ({ num: p.num, name: p.name })),
+      ...active.map(p => ({ num: p.num, name: p.name })),
     ];
-    current.forEach(p => { try { p.conn.send({ type: 'lobby', players: list, myNum: p.num }); } catch {} });
+    active.forEach(p => { try { p.conn.send({ type: 'lobby', players: list, myNum: p.num }); } catch {} });
+  }, []);
+
+  const sendCurrentState = useCallback((conn: any, playerNum: number, role: { role: 'innocent' | 'impostor'; word: string }) => {
+    const phase = gamePhaseRef.current;
+    const active = playersRef.current.filter(p => !p.disconnected);
+    const list = [
+      { num: 1, name: hostNameRef.current },
+      ...active.map(p => ({ num: p.num, name: p.name })),
+    ];
+    try { conn.send({ type: 'lobby', players: list, myNum: playerNum }); } catch {}
+
+    if (!['role', 'voting', 'results', 'reveal'].includes(phase)) return;
+
+    setTimeout(() => {
+      try { conn.send({ type: 'role', role: role.role, word: role.word, timerDuration: 0 }); } catch {}
+      setTimeout(() => {
+        if (phase === 'voting') {
+          try { conn.send({ type: 'voting_open', players: allPlayersRef.current }); } catch {}
+        } else if (phase === 'results' && eliminatedNumRef.current !== null) {
+          try { conn.send({ type: 'vote_results', tally: tallyRef.current.map(({ num, count, name }) => ({ num, count, name })), eliminatedNum: eliminatedNumRef.current }); } catch {}
+        } else if (phase === 'reveal' && revealStateRef.current) {
+          try { conn.send({ type: 'impostor_reveal', ...revealStateRef.current }); } catch {}
+        }
+      }, 150);
+    }, 200);
   }, []);
 
   const finalizeVotes = useCallback(() => {
     const players = allPlayersRef.current;
     const tallyMap = new Map<number, number>(players.map(p => [p.num, 0]));
-
     votesRef.current.forEach(targetNum => {
       tallyMap.set(targetNum, (tallyMap.get(targetNum) ?? 0) + 1);
     });
@@ -558,7 +627,6 @@ export default function HostRoom() {
       const tv = confirmedVoteRef.current;
       tallyMap.set(tv, (tallyMap.get(tv) ?? 0) + 1);
     }
-
     const sorted: TallyEntry[] = Array.from(tallyMap.entries())
       .map(([num, count]) => {
         const player = players.find(p => p.num === num);
@@ -568,6 +636,8 @@ export default function HostRoom() {
 
     const eliminated = sorted[0].num;
     const elName = sorted[0].name;
+    tallyRef.current = sorted;
+    eliminatedNumRef.current = eliminated;
     setTally(sorted);
     setEliminatedNum(eliminated);
     setEliminatedName(elName);
@@ -609,7 +679,8 @@ export default function HostRoom() {
       peer.on('connection', (conn: any) => {
         conn.on('open', () => {
           if (!mounted) return;
-          if (playersRef.current.length >= 19) { conn.close(); return; }
+          const activeCount = playersRef.current.filter(p => !p.disconnected).length;
+          if (activeCount >= 19) { conn.close(); return; }
           const num = counterRef.current++;
           const player: ConnectedPlayer = { peerId: conn.peer, num, conn, name: '' };
           playersRef.current = [...playersRef.current, player];
@@ -621,8 +692,37 @@ export default function HostRoom() {
           if (msg.type === 'join') {
             if (typeof msg.name !== 'string') return;
             const safeName = msg.name.trim().slice(0, 20) || '?';
+            const sessionId = typeof msg.sessionId === 'string' ? msg.sessionId : undefined;
+
+            // Check for reconnection
+            if (sessionId) {
+              const disconnected = disconnectedSessionsRef.current.get(sessionId);
+              if (disconnected) {
+                clearTimeout(disconnected.timer);
+                disconnectedSessionsRef.current.delete(sessionId);
+                // Remove the temp slot created on conn.open for this peerId
+                playersRef.current = playersRef.current.filter(p => p.peerId !== conn.peer);
+                // Restore old slot with new connection
+                const restored: ConnectedPlayer = {
+                  ...disconnected.player,
+                  peerId: conn.peer,
+                  conn,
+                  sessionId,
+                  disconnected: false,
+                };
+                playersRef.current = playersRef.current.map(p =>
+                  p.num === disconnected.player.num ? restored : p
+                );
+                playerRolesRef.current.set(conn.peer, disconnected.role);
+                setPlayers([...playersRef.current]);
+                sendCurrentState(conn, restored.num, disconnected.role);
+                return;
+              }
+            }
+
+            // Regular join — set name and sessionId
             const updated = playersRef.current.map(p =>
-              p.peerId === conn.peer ? { ...p, name: safeName } : p
+              p.peerId === conn.peer ? { ...p, name: safeName, sessionId } : p
             );
             playersRef.current = updated;
             setPlayers([...updated]);
@@ -652,6 +752,28 @@ export default function HostRoom() {
         });
 
         conn.on('close', () => {
+          const player = playersRef.current.find(p => p.peerId === conn.peer);
+          const isActiveGame = !['naming', 'loading', 'lobby'].includes(gamePhaseRef.current);
+
+          if (player?.sessionId && isActiveGame) {
+            // Keep slot for reconnection window
+            const role = playerRolesRef.current.get(conn.peer);
+            if (role) {
+              const timer = setTimeout(() => {
+                disconnectedSessionsRef.current.delete(player.sessionId!);
+                playersRef.current = playersRef.current.filter(p => p.num !== player.num);
+                setPlayers([...playersRef.current]);
+              }, RECONNECT_WINDOW_MS);
+
+              disconnectedSessionsRef.current.set(player.sessionId, { player, role, timer });
+              playersRef.current = playersRef.current.map(p =>
+                p.peerId === conn.peer ? { ...p, disconnected: true } : p
+              );
+              setPlayers([...playersRef.current]);
+              return;
+            }
+          }
+
           playersRef.current = playersRef.current.filter(p => p.peerId !== conn.peer);
           setPlayers([...playersRef.current]);
           if (mounted) broadcastLobby(playersRef.current);
@@ -690,7 +812,7 @@ export default function HostRoom() {
       wakeLock?.release();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes, lang]);
+  }, [peerInit, broadcastAll, broadcastLobby, triggerVoting, finalizeVotes, sendCurrentState, lang]);
 
   /* ── Game actions ────────────────────────────────────────────── */
   const vibrate = (pattern: number | number[]) => {
@@ -701,7 +823,7 @@ export default function HostRoom() {
     vibrate([40, 30, 120]);
     const allSlots = [
       { id: 'host', num: 1, name: hostNameRef.current },
-      ...playersRef.current.map(p => ({ id: p.peerId, num: p.num, name: p.name })),
+      ...playersRef.current.filter(p => !p.disconnected).map(p => ({ id: p.peerId, num: p.num, name: p.name })),
     ];
     const shuffled = shuffle(allSlots);
     const cap = Math.min(impostors, allSlots.length - 1);
@@ -717,9 +839,12 @@ export default function HostRoom() {
     shuffled.slice(0, cap).forEach(s => impostorNums.add(s.num));
     impostorNumsRef.current = impostorNums;
 
-    playersRef.current.forEach(p => {
+    playerRolesRef.current.clear();
+    playersRef.current.filter(p => !p.disconnected).forEach(p => {
       const role = roleMap.get(p.peerId) as 'innocent' | 'impostor';
-      try { p.conn.send({ type: 'role', role, word: role === 'innocent' ? wordRef.current : '' }); } catch {}
+      const word = role === 'innocent' ? wordRef.current : '';
+      playerRolesRef.current.set(p.peerId, { role, word });
+      try { p.conn.send({ type: 'role', role, word, timerDuration: roundDurationRef.current }); } catch {}
     });
 
     const hostRole = roleMap.get('host') as 'innocent' | 'impostor';
@@ -753,6 +878,7 @@ export default function HostRoom() {
     const wasImpostor = impostorNumsRef.current.has(eliminatedNum);
     const player = allPlayersRef.current.find(p => p.num === eliminatedNum);
     const elName = player?.name ?? `Jogador ${eliminatedNum}`;
+    revealStateRef.current = { eliminatedName: elName, wasImpostor };
     setEliminatedName(elName);
     broadcastAll({ type: 'impostor_reveal', eliminatedName: elName, wasImpostor });
     setPhase('reveal');
@@ -765,7 +891,7 @@ export default function HostRoom() {
     });
   }, [roomUrl]);
 
-  const totalInLobby = 1 + players.length;
+  const totalInLobby = 1 + players.filter(p => !p.disconnected).length;
 
   const flashOverlay = phaseFlash ? (
     <div className="animate-phase-flash fixed inset-0 z-50 pointer-events-none" style={{ background: '#000' }} />
@@ -817,13 +943,7 @@ export default function HostRoom() {
     return (
       <>
         {flashOverlay}
-        <ResultsScreen
-          tally={tally}
-          eliminatedNum={eliminatedNum}
-          isHost={true}
-          onReveal={revealImpostor}
-          t={t}
-        />
+        <ResultsScreen tally={tally} eliminatedNum={eliminatedNum} isHost={true} onReveal={revealImpostor} t={t} />
       </>
     );
   }
@@ -834,12 +954,7 @@ export default function HostRoom() {
     return (
       <>
         {flashOverlay}
-        <RevealScreen
-          eliminatedName={eliminatedName}
-          wasImpostor={wasImpostor}
-          onNewGame={() => router.push('/')}
-          t={t}
-        />
+        <RevealScreen eliminatedName={eliminatedName} wasImpostor={wasImpostor} onNewGame={() => router.push('/')} t={t} />
       </>
     );
   }
@@ -848,15 +963,16 @@ export default function HostRoom() {
   if (phase === 'role' && myRole) {
     return (
       <>
-      {flashOverlay}
-      <HostRoleScreen
-        myRole={myRole}
-        voteRequestCount={voteRequestCount}
-        totalPlayers={totalPlayers}
-        hasRequestedVote={hasRequestedVote}
-        onRequestVote={requestVote}
-        t={t}
-      />
+        {flashOverlay}
+        <HostRoleScreen
+          myRole={myRole}
+          voteRequestCount={voteRequestCount}
+          totalPlayers={totalPlayers}
+          hasRequestedVote={hasRequestedVote}
+          onRequestVote={requestVote}
+          timerDuration={roundDuration}
+          t={t}
+        />
       </>
     );
   }
@@ -898,9 +1014,14 @@ export default function HostRoom() {
         </div>
         {players.map(p => (
           <div key={p.peerId} className="flex items-center justify-between py-3 px-4 animate-fade-in" style={{ borderBottom: '1px solid #1a1a1a' }}>
-            <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
+            <span className="text-sm" style={{ color: p.disconnected ? '#333333' : '#888888', fontFamily: 'var(--font-inter)' }}>
               {p.name || '...'}
             </span>
+            {p.disconnected && (
+              <span className="text-xs tracking-widest uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+                {t.disconnected}
+              </span>
+            )}
           </div>
         ))}
         {totalInLobby < 2 && (
@@ -910,8 +1031,14 @@ export default function HostRoom() {
         )}
       </div>
 
-      <div className="py-4 px-4" style={{ border: '1px solid #1a1a1a' }}>
+      <div className="flex flex-col gap-4 py-4 px-4" style={{ border: '1px solid #1a1a1a' }}>
         <Stepper label={t.impostors} value={impostors} min={1} max={Math.max(1, totalInLobby - 1)} onChange={setImpostors} />
+        <div className="w-full h-px" style={{ background: '#1a1a1a' }} />
+        <TimeSelector
+          value={roundDuration}
+          onChange={(v) => { setRoundDuration(v); roundDurationRef.current = v; }}
+          t={t}
+        />
       </div>
 
       <button onClick={startGame} disabled={totalInLobby < 2}

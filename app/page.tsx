@@ -14,6 +14,9 @@ const T = {
     createRoom: 'CRIAR SALA',
     summary: (p: number, i: number) =>
       `${p} jogadores · ${i} impostor${i > 1 ? 'es' : ''}`,
+    joinRoom: 'ENTRAR NA SALA',
+    roomCode: 'Código da sala',
+    enter: 'ENTRAR',
     howToPlay: 'como jogar',
     aboutTitle: 'COMO JOGAR',
     aboutBody: [
@@ -40,6 +43,9 @@ const T = {
     createRoom: 'CREATE ROOM',
     summary: (p: number, i: number) =>
       `${p} players · ${i} impostor${i > 1 ? 's' : ''}`,
+    joinRoom: 'JOIN ROOM',
+    roomCode: 'Room code',
+    enter: 'ENTER',
     howToPlay: 'how to play',
     aboutTitle: 'HOW TO PLAY',
     aboutBody: [
@@ -176,6 +182,8 @@ export default function ConfigPage() {
   const [impostors, setImpostors] = useState(1);
   const [lang, setLang] = useState<Lang>('pt');
   const [showAbout, setShowAbout] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
 
   const t = T[lang];
 
@@ -241,7 +249,7 @@ export default function ConfigPage() {
 
           <div className="relative">
             <div
-              className="font-cinzel font-black leading-none animate-flicker animate-ambient-bleed"
+              className="font-cinzel font-black leading-none animate-flicker animate-ambient-bleed animate-text-glitch"
               style={{ fontSize: 'clamp(4.5rem, 18vw, 7rem)', color: '#c41e1e', lineHeight: 1 }}
             >
               I
@@ -301,6 +309,47 @@ export default function ConfigPage() {
           >
             {t.createRoom}
           </button>
+
+          {/* Join room toggle */}
+          {!showJoin ? (
+            <button
+              onClick={() => setShowJoin(true)}
+              className="w-full py-3 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
+              style={{ background: 'transparent', color: '#555555', border: '1px solid #222222' }}
+            >
+              {t.joinRoom}
+            </button>
+          ) : (
+            <div className="w-full flex gap-2 animate-fade-in">
+              <input
+                type="text"
+                value={joinCode}
+                onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
+                onKeyDown={e => e.key === 'Enter' && joinCode.length === 5 && router.push(`/sala/${joinCode.toLowerCase()}?lang=${lang}`)}
+                placeholder={t.roomCode}
+                autoFocus
+                className="flex-1 text-center text-sm bg-transparent outline-none py-3 px-3 font-cinzel tracking-[0.2em]"
+                style={{
+                  border: '1px solid #2a2a2a',
+                  color: '#f0ede6',
+                  caretColor: '#c41e1e',
+                }}
+              />
+              <button
+                onClick={() => joinCode.length === 5 && router.push(`/sala/${joinCode.toLowerCase()}?lang=${lang}`)}
+                disabled={joinCode.length !== 5}
+                className="px-4 py-3 font-cinzel font-bold tracking-[0.2em] text-xs transition-all active:scale-95"
+                style={{
+                  background: joinCode.length === 5 ? 'linear-gradient(135deg, #8b0000, #c41e1e)' : '#111111',
+                  color: joinCode.length === 5 ? '#f0ede6' : '#2a2a2a',
+                  border: `1px solid ${joinCode.length === 5 ? '#c41e1e40' : '#1a1a1a'}`,
+                }}
+              >
+                {t.enter}
+              </button>
+            </div>
+          )}
+
           <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#444444' }}>
             {t.summary(players, impostors)}
           </p>

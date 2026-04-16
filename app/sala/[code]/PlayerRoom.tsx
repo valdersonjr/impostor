@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 
 const PEER_PREFIX = 'impostor-';
@@ -98,9 +98,44 @@ const T = {
 interface LobbyPlayer { num: number; name: string; }
 interface TallyEntry { num: number; count: number; name: string; }
 
+/* ── Timer bar ───────────────────────────────────────────────── */
+function TimerBar({ duration, onExpire }: { duration: number; onExpire: () => void }) {
+  const [remaining, setRemaining] = useState(duration);
+  const onExpireRef = useRef(onExpire);
+  onExpireRef.current = onExpire;
+
+  useEffect(() => {
+    if (duration === 0) return;
+    const interval = setInterval(() => {
+      setRemaining(r => {
+        if (r <= 1) { clearInterval(interval); onExpireRef.current(); return 0; }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [duration]);
+
+  if (duration === 0) return null;
+
+  const pct = (remaining / duration) * 100;
+  const isLow = pct < 25;
+
+  return (
+    <div className="fixed top-0 left-0 right-0 z-40" style={{ height: '2px', background: '#111111' }}>
+      <div style={{
+        height: '100%',
+        width: `${pct}%`,
+        background: isLow ? '#c41e1e' : '#2a2a2a',
+        transition: 'width 1s linear, background 0.5s ease',
+        boxShadow: isLow ? '0 0 6px #c41e1e80' : 'none',
+      }} />
+    </div>
+  );
+}
+
 /* ── Naming screen ───────────────────────────────────────────── */
-function NamingScreen({ onConfirm, t }: { onConfirm: (name: string) => void; t: typeof T['pt'] }) {
-  const [value, setValue] = useState('');
+function NamingScreen({ onConfirm, initialName, t }: { onConfirm: (name: string) => void; initialName: string; t: typeof T['pt'] }) {
+  const [value, setValue] = useState(initialName);
   const submit = () => { const n = value.trim(); if (n) onConfirm(n); };
   return (
     <div className="grain h-full flex flex-col items-center justify-center px-8 gap-10">
@@ -164,7 +199,6 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
           {t.whoIsImpostor}
         </p>
       </div>
-
       <div className="flex flex-col gap-0 flex-1">
         {players.map(p => {
           const isMe = p.num === myNum;
@@ -187,16 +221,11 @@ function VotingScreen({ players, myNum, selectedVote, confirmedVote, voteCount, 
           );
         })}
       </div>
-
       <div className="flex flex-col gap-3">
         {confirmedVote !== null ? (
           <div className="flex flex-col items-center gap-1 py-4">
-            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>
-              {t.voteRegistered}
-            </p>
-            <p className="text-xs" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-              {t.voted(voteCount, total)}
-            </p>
+            <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#c41e1e', fontFamily: 'var(--font-inter)' }}>{t.voteRegistered}</p>
+            <p className="text-xs" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>{t.voted(voteCount, total)}</p>
           </div>
         ) : (
           <button onClick={onConfirm} disabled={selectedVote === null}
@@ -263,31 +292,25 @@ function RevealScreen({ eliminatedName, wasImpostor, t }: { eliminatedName: stri
       )}
       {wasImpostor ? (
         <>
-          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
-            style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#c41e1e50', animationDelay: '0ms' }}>{eliminatedName}</p>
           <div className="w-16 h-px animate-stagger-in" style={{ background: '#c41e1e30', animationDelay: '400ms' }} />
           <h2 className="font-cinzel font-black text-center animate-blood-pulse animate-stagger-in"
             style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#c41e1e', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasImpostor}
           </h2>
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
-            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
-            {t.townWon}
-          </p>
+            style={{ color: '#c41e1e40', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.townWon}</p>
         </>
       ) : (
         <>
-          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in"
-            style={{ color: '#2a2a2a', animationDelay: '0ms' }}>{eliminatedName}</p>
+          <p className="font-cinzel text-xs tracking-[0.4em] uppercase animate-stagger-in" style={{ color: '#2a2a2a', animationDelay: '0ms' }}>{eliminatedName}</p>
           <div className="w-16 h-px animate-stagger-in" style={{ background: '#1f1f1f', animationDelay: '400ms' }} />
           <h2 className="font-cinzel font-bold text-center animate-stagger-in"
             style={{ fontSize: 'clamp(2.2rem, 11vw, 4.5rem)', color: '#444444', letterSpacing: '0.04em', lineHeight: 1, animationDelay: '700ms' }}>
             {t.wasInnocent}
           </h2>
           <p className="text-xs tracking-[0.3em] uppercase animate-stagger-in"
-            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>
-            {t.impostorLoose}
-          </p>
+            style={{ color: '#222222', fontFamily: 'var(--font-inter)', animationDelay: '1300ms' }}>{t.impostorLoose}</p>
         </>
       )}
     </div>
@@ -295,46 +318,41 @@ function RevealScreen({ eliminatedName, wasImpostor, t }: { eliminatedName: stri
 }
 
 /* ── Role screen ─────────────────────────────────────────────── */
-function RoleScreen({ myRole, voteRequestCount, voteTotal, hasRequestedVote, onRequestVote, t }: {
+function RoleScreen({ myRole, voteRequestCount, voteTotal, hasRequestedVote, onRequestVote, timerDuration, t }: {
   myRole: { role: 'innocent' | 'impostor'; word: string };
   voteRequestCount: number;
   voteTotal: number;
   hasRequestedVote: boolean;
   onRequestVote: () => void;
+  timerDuration: number;
   t: typeof T['pt'];
 }) {
   const [revealed, setRevealed] = useState(false);
   const isImpostor = myRole.role === 'impostor';
+  const handleExpire = useCallback(() => onRequestVote(), [onRequestVote]);
 
   return (
     <div className="grain h-full flex items-center justify-center relative pb-20">
-      {/* Tappable reveal area */}
+      <TimerBar duration={timerDuration} onExpire={handleExpire} />
       <button
         onClick={() => setRevealed(r => !r)}
         className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in w-full relative"
         style={{ background: 'transparent', border: 'none' }}
       >
-        {/* Content — always in DOM, blurred when hidden to avoid layout shift */}
         <div style={{ opacity: revealed ? 1 : 0, transition: 'opacity 0.3s ease', pointerEvents: 'none', userSelect: 'none' }}>
           {isImpostor ? (
             <div className="flex flex-col items-center gap-6">
-              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
-                {t.youAreThe}
-              </p>
+              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>{t.youAreThe}</p>
               <h2 className="font-cinzel font-black animate-blood-pulse animate-flicker"
                 style={{ fontSize: 'clamp(2.8rem, 13vw, 5.5rem)', color: '#c41e1e', letterSpacing: '0.06em', lineHeight: 1 }}>
                 {t.impostor}
               </h2>
               <div className="w-32 h-px" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e40, transparent)' }} />
-              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>
-                {t.pretend}
-              </p>
+              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>{t.pretend}</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-8">
-              <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-                {t.youKnowTheWord}
-              </p>
+              <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>{t.youKnowTheWord}</p>
               <div className="w-20 h-px" style={{ background: 'linear-gradient(90deg, transparent, #1f1f1f, transparent)' }} />
               <p className="font-cinzel font-bold text-center leading-tight"
                 style={{ fontSize: 'clamp(2.5rem, 12vw, 5rem)', color: '#f0ede6', letterSpacing: '0.05em', wordBreak: 'break-word' }}>
@@ -343,31 +361,22 @@ function RoleScreen({ myRole, voteRequestCount, voteTotal, hasRequestedVote, onR
             </div>
           )}
         </div>
-
-        {/* Hint overlay when hidden */}
         {!revealed && (
-          <p className="absolute text-xs tracking-[0.3em] uppercase"
-            style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+          <p className="absolute text-xs tracking-[0.3em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
             {t.tapToReveal}
           </p>
         )}
-
-        {/* Hide hint when revealed */}
         {revealed && (
-          <p className="absolute bottom-[-2rem] text-xs tracking-[0.25em] uppercase"
-            style={{ color: '#222222', fontFamily: 'var(--font-inter)' }}>
+          <p className="absolute bottom-[-2rem] text-xs tracking-[0.25em] uppercase" style={{ color: '#222222', fontFamily: 'var(--font-inter)' }}>
             {t.tapToHide}
           </p>
         )}
       </button>
 
-      {/* Vote request banner */}
       <div className="fixed bottom-0 left-0 right-0 px-6 flex items-center justify-between"
         style={{ background: '#0d0d0d', borderTop: '1px solid #1a1a1a', paddingTop: '1.25rem', paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
         <div>
-          <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
-            {t.voting}
-          </p>
+          <p className="text-xs tracking-[0.25em] uppercase" style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>{t.voting}</p>
           {voteRequestCount > 0 && (
             <p className="text-xs mt-0.5" style={{ color: '#555555', fontFamily: 'var(--font-inter)' }}>
               {t.wantVote(voteRequestCount, voteTotal)}
@@ -397,6 +406,11 @@ export default function PlayerRoom() {
   const lang = (searchParams.get('lang') ?? 'pt') as Lang;
   const t = T[lang] ?? T.pt;
 
+  // Load saved name for this room (reconnection UX)
+  const savedName = typeof window !== 'undefined'
+    ? (localStorage.getItem(`impostor_name_${code}`) ?? '')
+    : '';
+
   const [phase, setPhase] = useState<Phase>('naming');
   const [phaseFlash, setPhaseFlash] = useState(false);
 
@@ -411,12 +425,13 @@ export default function PlayerRoom() {
       return () => clearTimeout(timer);
     }
   }, [phase]);
-  const [name, setName] = useState('');
+
   const [lobbyPlayers, setLobbyPlayers] = useState<LobbyPlayer[]>([]);
   const [myRole, setMyRole] = useState<{ role: 'innocent' | 'impostor'; word: string } | null>(null);
   const [myNum, setMyNum] = useState<number | null>(null);
   const [myNumSet, setMyNumSet] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [timerDuration, setTimerDuration] = useState(0);
 
   // Voting state
   const [hasRequestedVote, setHasRequestedVote] = useState(false);
@@ -435,6 +450,7 @@ export default function PlayerRoom() {
   const myNumRef = useRef<number | null>(null);
   const myNumSetRef = useRef(false);
   const nameRef = useRef('');
+  const sessionIdRef = useRef<string>('');
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -458,7 +474,9 @@ export default function PlayerRoom() {
         conn.on('open', () => {
           if (!mountedRef.current) return;
           clearTimeout(timeout);
-          try { conn.send({ type: 'join', name: nameRef.current }); } catch {}
+          // Store name for reconnection
+          try { localStorage.setItem(`impostor_name_${code}`, nameRef.current); } catch {}
+          try { conn.send({ type: 'join', name: nameRef.current, sessionId: sessionIdRef.current }); } catch {}
           setPhase('waiting');
         });
 
@@ -481,6 +499,7 @@ export default function PlayerRoom() {
           if (msg.type === 'role') {
             vibrate(msg.role === 'impostor' ? [80, 40, 80, 40, 200] : [40, 30, 100]);
             setMyRole({ role: msg.role, word: msg.word ?? '' });
+            setTimerDuration(msg.timerDuration ?? 0);
             setPhase('role');
           }
 
@@ -510,10 +529,7 @@ export default function PlayerRoom() {
         });
 
         conn.on('close', () => {
-          if (mountedRef.current) {
-            setErrorMsg(t.errClosed);
-            setPhase('error');
-          }
+          if (mountedRef.current) { setErrorMsg(t.errClosed); setPhase('error'); }
         });
 
         conn.on('error', () => {
@@ -530,7 +546,7 @@ export default function PlayerRoom() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, phase]);
 
-  // Cleanup real só no unmount
+  // Real cleanup on unmount only
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -539,11 +555,11 @@ export default function PlayerRoom() {
     };
   }, []);
 
-  const requestVote = () => {
+  const requestVote = useCallback(() => {
     if (hasRequestedVote || !connRef.current) return;
     setHasRequestedVote(true);
     try { connRef.current.send({ type: 'request_vote' }); } catch {}
-  };
+  }, [hasRequestedVote]);
 
   const confirmVote = () => {
     if (confirmedVote !== null || selectedVote === null || !connRef.current) return;
@@ -554,9 +570,18 @@ export default function PlayerRoom() {
   /* ── Naming ── */
   if (phase === 'naming') {
     return (
-      <NamingScreen t={t} onConfirm={(n) => {
-        setName(n);
+      <NamingScreen t={t} initialName={savedName} onConfirm={(n) => {
         nameRef.current = n;
+        // Generate or reuse sessionId for this room
+        let sid = '';
+        try {
+          sid = localStorage.getItem(`impostor_sid_${code}`) ?? '';
+          if (!sid) {
+            sid = crypto.randomUUID();
+            localStorage.setItem(`impostor_sid_${code}`, sid);
+          }
+        } catch {}
+        sessionIdRef.current = sid;
         setPhase('connecting');
       }} />
     );
@@ -627,8 +652,16 @@ export default function PlayerRoom() {
   if (phase === 'role' && myRole) {
     return (
       <>
-      {flashOverlay}
-      <RoleScreen myRole={myRole} voteRequestCount={voteRequestCount} voteTotal={voteTotal} hasRequestedVote={hasRequestedVote} onRequestVote={requestVote} t={t} />
+        {flashOverlay}
+        <RoleScreen
+          myRole={myRole}
+          voteRequestCount={voteRequestCount}
+          voteTotal={voteTotal}
+          hasRequestedVote={hasRequestedVote}
+          onRequestVote={requestVote}
+          timerDuration={timerDuration}
+          t={t}
+        />
       </>
     );
   }
@@ -654,11 +687,8 @@ export default function PlayerRoom() {
           {t.players} ({lobbyPlayers.length})
         </p>
         {lobbyPlayers.map(p => (
-          <div key={p.num} className="flex items-center justify-between py-3 px-4"
-            style={{ borderBottom: '1px solid #1a1a1a' }}>
-            <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-              {p.name}
-            </span>
+          <div key={p.num} className="flex items-center justify-between py-3 px-4" style={{ borderBottom: '1px solid #1a1a1a' }}>
+            <span className="text-sm" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>{p.name}</span>
             <div className="flex gap-2">
               {p.num === myNum && myNumSet && (
                 <span className="text-xs tracking-widest uppercase" style={{ color: '#b8860b', fontFamily: 'var(--font-inter)' }}>{t.you}</span>

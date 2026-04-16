@@ -90,29 +90,75 @@
 }
 
 @keyframes text-glitch {
-  0%, 87%, 100% {
+  0%, 68%, 100% {
     transform: translateX(0) skewX(0deg);
     text-shadow: none;
     filter: none;
   }
-  88% {
-    transform: translateX(-5px) skewX(-1deg);
-    text-shadow: 5px 0 #c41e1e, -5px 0 #0a0a3a;
-    filter: brightness(1.4);
+  /* Primeiro burst — rápido */
+  69% {
+    transform: translateX(-12px) skewX(-5deg);
+    text-shadow: 12px 0 #c41e1e, -12px 0 #0a0a3a;
+    filter: brightness(2) saturate(0);
   }
-  89% {
-    transform: translateX(4px) skewX(1deg);
-    text-shadow: -4px 0 #c41e1e, 4px 0 #0a0a3a;
-    filter: brightness(0.8);
+  69.3% {
+    transform: translateX(16px) skewX(4deg);
+    text-shadow: -16px 0 #c41e1e, 16px 0 #0d1a4a;
+    filter: brightness(0.3);
   }
-  90% {
-    transform: translateX(-2px);
-    text-shadow: 2px 0 #c41e1e60;
+  69.6% {
+    transform: translateX(-9px) skewX(-2deg);
+    text-shadow: 9px 0 #c41e1ecc;
+    filter: brightness(1.6);
+  }
+  69.9% {
+    transform: translateX(5px);
+    text-shadow: -5px 0 #c41e1e60;
     filter: none;
   }
-  91% {
+  70.2% {
+    transform: translateX(-2px);
+    text-shadow: none;
+  }
+  70.5%, 87% {
     transform: translateX(0);
     text-shadow: none;
+    filter: none;
+  }
+  /* Segundo burst — mais brutal */
+  87.3% {
+    transform: translateX(18px) skewX(6deg);
+    text-shadow: -18px 0 #c41e1e, 18px 0 #001a3a;
+    filter: brightness(2.5) saturate(0);
+  }
+  87.6% {
+    transform: translateX(-22px) skewX(-5deg);
+    text-shadow: 22px 0 #c41e1e, -22px 0 #0a0a3a;
+    filter: brightness(0.15);
+  }
+  87.9% {
+    transform: translateX(14px) skewX(3deg);
+    text-shadow: -14px 0 #c41e1ecc, 14px 0 #0d1a4a;
+    filter: brightness(1.8);
+  }
+  88.2% {
+    transform: translateX(-8px) skewX(-2deg);
+    text-shadow: 8px 0 #c41e1e80;
+    filter: brightness(1.2);
+  }
+  88.5% {
+    transform: translateX(4px);
+    text-shadow: -4px 0 #c41e1e40;
+    filter: none;
+  }
+  88.8% {
+    transform: translateX(-2px);
+    text-shadow: none;
+  }
+  89%, 100% {
+    transform: translateX(0);
+    text-shadow: none;
+    filter: none;
   }
 }
 
