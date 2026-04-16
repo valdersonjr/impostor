@@ -511,6 +511,7 @@ export default function HostRoom() {
       peer.on('connection', (conn: any) => {
         conn.on('open', () => {
           if (!mounted) return;
+          if (playersRef.current.length >= 19) { conn.close(); return; }
           const num = counterRef.current++;
           const player: ConnectedPlayer = { peerId: conn.peer, num, conn, name: '' };
           playersRef.current = [...playersRef.current, player];
@@ -520,8 +521,10 @@ export default function HostRoom() {
 
         conn.on('data', (msg: any) => {
           if (msg.type === 'join') {
+            if (typeof msg.name !== 'string') return;
+            const safeName = msg.name.trim().slice(0, 20) || '?';
             const updated = playersRef.current.map(p =>
-              p.peerId === conn.peer ? { ...p, name: msg.name } : p
+              p.peerId === conn.peer ? { ...p, name: safeName } : p
             );
             playersRef.current = updated;
             setPlayers([...updated]);
@@ -539,6 +542,9 @@ export default function HostRoom() {
           }
 
           if (msg.type === 'vote') {
+            const isValidTarget = typeof msg.targetNum === 'number' &&
+              allPlayersRef.current.some(p => p.num === msg.targetNum);
+            if (!isValidTarget) return;
             votesRef.current.set(conn.peer, msg.targetNum);
             const total = totalPlayersRef.current;
             const count = votesRef.current.size + (confirmedVoteRef.current !== null ? 1 : 0);
