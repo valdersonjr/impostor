@@ -48,6 +48,8 @@ const T = {
     newGame: 'NOVO JOGO',
     vote: 'voto',
     votes: 'votos',
+    tapToReveal: 'toque para revelar',
+    tapToHide: 'toque para esconder',
   },
   en: {
     yourName: 'YOUR NAME',
@@ -87,6 +89,8 @@ const T = {
     newGame: 'NEW GAME',
     vote: 'vote',
     votes: 'votes',
+    tapToReveal: 'tap to reveal',
+    tapToHide: 'tap to hide',
   },
 };
 
@@ -400,6 +404,79 @@ function RevealScreen({ eliminatedName, wasImpostor, onNewGame, t }: {
         style={{ border: '1px solid #1a1a1a', color: '#333333', animationDelay: '2000ms' }}>
         {t.newGame}
       </button>
+    </div>
+  );
+}
+
+/* ── Host role screen ────────────────────────────────────────── */
+function HostRoleScreen({ myRole, voteRequestCount, totalPlayers, hasRequestedVote, onRequestVote, t }: {
+  myRole: { role: 'innocent' | 'impostor'; word: string };
+  voteRequestCount: number;
+  totalPlayers: number;
+  hasRequestedVote: boolean;
+  onRequestVote: () => void;
+  t: typeof T['pt'];
+}) {
+  const [revealed, setRevealed] = useState(false);
+  const isImpostor = myRole.role === 'impostor';
+
+  return (
+    <div className="grain h-full flex items-center justify-center relative pb-20">
+      <button
+        onClick={() => setRevealed(r => !r)}
+        className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in w-full relative"
+        style={{ background: 'transparent', border: 'none' }}
+      >
+        <div style={{ opacity: revealed ? 1 : 0, transition: 'opacity 0.3s ease', pointerEvents: 'none', userSelect: 'none' }}>
+          {isImpostor ? (
+            <div className="flex flex-col items-center gap-6">
+              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
+                {t.youAreThe}
+              </p>
+              <h2 className="font-cinzel font-black animate-blood-pulse animate-flicker"
+                style={{ fontSize: 'clamp(2.8rem, 13vw, 5.5rem)', color: '#c41e1e', letterSpacing: '0.06em', lineHeight: 1 }}>
+                {t.impostor}
+              </h2>
+              <div className="w-32 h-px" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e40, transparent)' }} />
+              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>
+                {t.pretend}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-8">
+              <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
+                {t.youKnowTheWord}
+              </p>
+              <div className="w-20 h-px" style={{ background: 'linear-gradient(90deg, transparent, #1f1f1f, transparent)' }} />
+              <p className="font-cinzel font-bold text-center leading-tight"
+                style={{ fontSize: 'clamp(2.5rem, 12vw, 5rem)', color: '#f0ede6', letterSpacing: '0.05em', wordBreak: 'break-word' }}>
+                {myRole.word.toUpperCase()}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {!revealed && (
+          <p className="absolute text-xs tracking-[0.3em] uppercase"
+            style={{ color: '#333333', fontFamily: 'var(--font-inter)' }}>
+            {t.tapToReveal}
+          </p>
+        )}
+        {revealed && (
+          <p className="absolute bottom-[-2rem] text-xs tracking-[0.25em] uppercase"
+            style={{ color: '#222222', fontFamily: 'var(--font-inter)' }}>
+            {t.tapToHide}
+          </p>
+        )}
+      </button>
+
+      <VoteRequestBanner
+        requested={hasRequestedVote}
+        count={voteRequestCount}
+        total={totalPlayers}
+        onRequest={onRequestVote}
+        t={t}
+      />
     </div>
   );
 }
@@ -772,43 +849,14 @@ export default function HostRoom() {
     return (
       <>
       {flashOverlay}
-      <div className="grain h-full flex items-center justify-center relative pb-20">
-        {myRole.role === 'innocent' ? (
-          <div className="flex flex-col items-center justify-center gap-8 px-8 animate-scale-in">
-            <p className="text-xs tracking-[0.3em] uppercase" style={{ color: '#888888', fontFamily: 'var(--font-inter)' }}>
-              {t.youKnowTheWord}
-            </p>
-            <div className="w-20 h-px" style={{ background: 'linear-gradient(90deg, transparent, #1f1f1f, transparent)' }} />
-            <p className="font-cinzel font-bold text-center leading-tight"
-              style={{ fontSize: 'clamp(2.5rem, 12vw, 5rem)', color: '#f0ede6', letterSpacing: '0.05em', wordBreak: 'break-word' }}>
-              {myRole.word.toUpperCase()}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="relative flex flex-col items-center justify-center gap-6 px-8 animate-scale-in">
-              <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
-                {t.youAreThe}
-              </p>
-              <h2 className="font-cinzel font-black animate-blood-pulse animate-flicker"
-                style={{ fontSize: 'clamp(2.8rem, 13vw, 5.5rem)', color: '#c41e1e', letterSpacing: '0.06em', lineHeight: 1 }}>
-                {t.impostor}
-              </h2>
-              <div className="w-32 h-px" style={{ background: 'linear-gradient(90deg, transparent, #c41e1e40, transparent)' }} />
-              <p className="text-xs tracking-[0.2em] uppercase" style={{ color: '#c41e1e99', fontFamily: 'var(--font-inter)' }}>
-                {t.pretend}
-              </p>
-            </div>
-          </>
-        )}
-        <VoteRequestBanner
-          requested={hasRequestedVote}
-          count={voteRequestCount}
-          total={totalPlayers}
-          onRequest={requestVote}
-          t={t}
-        />
-      </div>
+      <HostRoleScreen
+        myRole={myRole}
+        voteRequestCount={voteRequestCount}
+        totalPlayers={totalPlayers}
+        hasRequestedVote={hasRequestedVote}
+        onRequestVote={requestVote}
+        t={t}
+      />
       </>
     );
   }

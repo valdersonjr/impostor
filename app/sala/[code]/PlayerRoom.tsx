@@ -315,7 +315,7 @@ function RoleScreen({ myRole, voteRequestCount, voteTotal, hasRequestedVote, onR
         style={{ background: 'transparent', border: 'none' }}
       >
         {/* Content — always in DOM, blurred when hidden to avoid layout shift */}
-        <div style={{ filter: revealed ? 'none' : 'blur(18px)', transition: 'filter 0.3s ease', pointerEvents: 'none', userSelect: 'none' }}>
+        <div style={{ opacity: revealed ? 1 : 0, transition: 'opacity 0.3s ease', pointerEvents: 'none', userSelect: 'none' }}>
           {isImpostor ? (
             <div className="flex flex-col items-center gap-6">
               <p className="text-xs tracking-[0.35em] uppercase" style={{ color: '#c41e1eaa', fontFamily: 'var(--font-inter)' }}>
