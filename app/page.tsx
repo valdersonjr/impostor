@@ -192,7 +192,7 @@ export default function ConfigPage() {
     <>
       {showAbout && <AboutModal t={t} onClose={() => setShowAbout(false)} />}
 
-      <main className="grain relative flex flex-col items-center px-8 py-14 select-none overflow-y-auto" style={{ height: '100%', background: '#080808' }}>
+      <main className="grain relative flex flex-col items-center justify-between px-8 py-10 select-none" style={{ height: '100%', background: '#080808' }}>
 
         {/* Núcleo vermelho no fundo */}
         <div
@@ -242,7 +242,7 @@ export default function ConfigPage() {
           <div className="relative">
             <div
               className="font-cinzel font-black leading-none animate-flicker animate-ambient-bleed"
-              style={{ fontSize: '7rem', color: '#c41e1e', lineHeight: 1 }}
+              style={{ fontSize: 'clamp(4.5rem, 18vw, 7rem)', color: '#c41e1e', lineHeight: 1 }}
             >
               I
             </div>
@@ -268,11 +268,9 @@ export default function ConfigPage() {
           </p>
         </div>
 
-        <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
-
         {/* Steppers */}
         <div
-          className="flex flex-col gap-10 w-full max-w-xs animate-fade-up"
+          className="flex flex-col gap-6 w-full max-w-xs animate-fade-up"
           style={{ animationDelay: '120ms' }}
         >
           <Stepper label={t.players} value={players} min={2} max={20} onChange={handlePlayersChange} />
@@ -280,16 +278,14 @@ export default function ConfigPage() {
           <Stepper label={t.impostors} value={impostors} min={1} max={players - 1} onChange={(v) => setImpostors(v)} />
         </div>
 
-        <div className="flex-1" style={{ minHeight: '2rem', maxHeight: '4rem' }} />
-
-        {/* CTA */}
+        {/* CTA + How to play */}
         <div
-          className="w-full max-w-xs flex flex-col gap-3 animate-fade-up"
+          className="w-full max-w-xs flex flex-col items-center gap-3 animate-fade-up"
           style={{ animationDelay: '240ms' }}
         >
           <button
             onClick={start}
-            className="w-full py-5 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
+            className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
             style={{
               background: 'linear-gradient(135deg, #8b0000, #c41e1e)',
               color: '#f0ede6',
@@ -300,7 +296,7 @@ export default function ConfigPage() {
           </button>
           <button
             onClick={() => router.push(`/criar?impostors=${impostors}&lang=${lang}`)}
-            className="w-full py-4 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
+            className="w-full py-3 font-cinzel font-bold tracking-[0.35em] text-sm transition-all duration-200 active:scale-95"
             style={{ background: 'transparent', color: '#888888', border: '1px solid #333333' }}
           >
             {t.createRoom}
@@ -308,21 +304,19 @@ export default function ConfigPage() {
           <p className="text-center text-xs tracking-widest uppercase" style={{ color: '#444444' }}>
             {t.summary(players, impostors)}
           </p>
+          <button
+            onClick={() => setShowAbout(true)}
+            className="mt-1 text-xs tracking-[0.25em] uppercase transition-all active:scale-95 z-20 relative"
+            style={{
+              color: '#888888',
+              fontFamily: 'var(--font-inter)',
+              borderBottom: '1px solid #333333',
+              paddingBottom: '0.2rem',
+            }}
+          >
+            {t.howToPlay}
+          </button>
         </div>
-
-        {/* How to play */}
-        <button
-          onClick={() => setShowAbout(true)}
-          className="mt-8 text-xs tracking-[0.25em] uppercase transition-all active:scale-95 z-20 relative"
-          style={{
-            color: '#888888',
-            fontFamily: 'var(--font-inter)',
-            borderBottom: '1px solid #333333',
-            paddingBottom: '0.2rem',
-          }}
-        >
-          {t.howToPlay}
-        </button>
 
       </main>
     </>
