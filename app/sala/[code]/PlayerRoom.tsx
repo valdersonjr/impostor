@@ -429,9 +429,14 @@ export default function PlayerRoom() {
     };
 
     init();
-    return () => { mounted = false; connRef.current?.close(); peerRef.current?.destroy(); };
+    return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, phase]);
+
+  // Cleanup real só no unmount — separado para não destruir a conexão em mudanças de phase
+  useEffect(() => {
+    return () => { connRef.current?.close(); peerRef.current?.destroy(); };
+  }, []);
 
   const requestVote = () => {
     if (hasRequestedVote || !connRef.current) return;
